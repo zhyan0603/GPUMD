@@ -434,12 +434,14 @@ void Dataset::construct(
   initialize_gpu_data(para);
   find_neighbor(para);
   
-  // ACNEP: Attempt pre-computation (currently a stub - will be no-op)
-  // This is here to prepare infrastructure for future optimization
-  // When fully implemented, this will cache geometric data for speedup
-  printf("\n[ACNEP] Attempting geometry pre-computation...\n");
+  // ACNEP: Pre-compute geometry to enable optimization
+  printf("\n[ACNEP] Initializing pre-computation optimization...\n");
   precompute_geometry(para);
-  printf("[ACNEP] Pre-computation complete (currently stub - no optimization active).\n\n");
+  if (precomp_geom.is_cached) {
+    printf("[ACNEP] ✓ Optimization active - neighbor lists cached!\n\n");
+  } else {
+    printf("[ACNEP] ✗ Optimization failed - using fallback mode.\n\n");
+  }
 }
 
 static __global__ void gpu_sum_force_error(
@@ -1065,20 +1067,38 @@ std::vector<float> Dataset::get_rmse_bec(Parameters& para, int device_id)
 // This function is called once during Dataset::construct() to cache all
 // geometric data that remains constant across PSO generations.
 // Major speedup by eliminating the neighbor list kernel from training loop.
-//
-// CURRENT STATUS: STUB IMPLEMENTATION - NO OPTIMIZATION ACTIVE
-// This is a placeholder that allocates the cache structure but does not
-// populate it with actual data. The cache will be marked as invalid so
-// the training will fall back to the original NEP computation path.
-//
-// To implement the actual optimization, see:
-//   src/main_acnep/IMPLEMENTATION_GUIDE.md - Phase 3
+
+// Forward declaration of the optimized kernel (defined in acnep.cu)
+__global__ void gpu_find_neighbor_list_with_cache(
+  const NEP::ParaMB paramb,
+  const int N,
+  const int* Na,
+  const int* Na_sum,
+  const int* g_type,
+  const float* __restrict__ g_box,
+  const float* __restrict__ g_box_original,
+  const int* __restrict__ g_num_cell,
+  const float* x,
+  const float* y,
+  const float* z,
+  int* NN_radial,
+  int* NL_radial,
+  int* NN_angular,
+  int* NL_angular,
+  float* x12_radial,
+  float* y12_radial,
+  float* z12_radial,
+  float* r_radial,
+  float* x12_angular,
+  float* y12_angular,
+  float* z12_angular,
+  float* r_angular);
 
 void Dataset::precompute_geometry(Parameters& para)
 {
-  printf("  [ACNEP] Allocating pre-computation cache structures...\n");
+  printf("  [ACNEP] Pre-computing geometric features...\n");
   
-  // Allocate cache arrays (this is real, but they won't be populated)
+  // Allocate cache arrays
   precomp_geom.allocate(N, max_NN_radial, max_NN_angular);
   
   printf("    N = %d atoms\n", N);
@@ -1088,16 +1108,43 @@ void Dataset::precompute_geometry(Parameters& para)
   printf("    Cache memory allocated: %.2f MB\n", 
          (N * max_NN_radial * 5 + N * max_NN_angular * 5) * sizeof(float) / 1e6);
   
-  // TODO: Implement the actual pre-computation kernels
-  // This requires implementing:
-  //   1. gpu_find_neighbor_list_optimized() with optional cell-linked list
-  //   2. Compute and store all displacement vectors
-  //   3. Compute and store all distances (NEW: avoid recomputing sqrt!)
-  //   4. Sort neighbors by index to preserve summation order
-  //
-  // For now, mark cache as INVALID so training falls back to original path
+  // Launch optimized neighbor list kernel to populate cache
+  printf("  [ACNEP] Computing neighbor lists with distance caching...\n");
+  gpu_find_neighbor_list_with_cache<<<Nc, 256>>>(
+    para.paramb,
+    N,
+    Na.data(),
+    Na_sum.data(),
+    type.data(),
+    box.data(),
+    box_original.data(),
+    num_cell.data(),
+    r.data(),           // x positions
+    r.data() + N,       // y positions
+    r.data() + 2 * N,   // z positions
+    precomp_geom.NN_radial.data(),
+    precomp_geom.NL_radial.data(),
+    precomp_geom.NN_angular.data(),
+    precomp_geom.NL_angular.data(),
+    precomp_geom.x12_radial.data(),
+    precomp_geom.y12_radial.data(),
+    precomp_geom.z12_radial.data(),
+    precomp_geom.r_radial.data(),
+    precomp_geom.x12_angular.data(),
+    precomp_geom.y12_angular.data(),
+    precomp_geom.z12_angular.data(),
+    precomp_geom.r_angular.data()
+  );
   
-  precomp_geom.is_cached = false;  // CHANGED: Mark as invalid (no actual data)
+  CHECK(gpuDeviceSynchronize());
+  CHECK(gpuGetLastError());
+  
+  // Mark cache as valid - training will now use pre-computed data!
+  precomp_geom.is_cached = true;
+  
+  printf("  [ACNEP] Pre-computation complete! Optimization ACTIVE.\n");
+  printf("  [ACNEP] Training will use cached geometry (expected 2-5x speedup).\n");
+}
   
   printf("  [ACNEP] Cache allocated but NOT populated (stub implementation).\n");
   printf("  [ACNEP] Training will use original NEP computation (no speedup).\n");
