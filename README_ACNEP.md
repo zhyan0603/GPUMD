@@ -1,5 +1,15 @@
 # ACNEP: Accelerated Neuroevolution Potential Training
 
+## ⚠️ IMPORTANT: Current Status ⚠️
+
+**ACNEP currently provides NO performance improvement over NEP.**
+
+The optimization kernels are NOT yet implemented. See **[ACNEP_STATUS.md](ACNEP_STATUS.md)** for details.
+
+If you tested ACNEP and found no speedup, this is expected. The current version is a stub/infrastructure release.
+
+---
+
 ## Quick Start
 
 This repository now includes **ACNEP**, an optimized version of the NEP training code designed to achieve 4-10x speedups while maintaining numerical equivalence with the original implementation.

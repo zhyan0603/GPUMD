@@ -1,5 +1,13 @@
 # ACNEP Implementation Summary
 
+## ⚠️ CRITICAL NOTICE ⚠️
+
+**ACNEP currently shows NO speed improvement!** This is expected because optimization kernels are not yet implemented.
+
+**See [ACNEP_STATUS.md](ACNEP_STATUS.md) for detailed explanation.**
+
+---
+
 ## What Has Been Completed
 
 I've implemented the foundational infrastructure for ACNEP (Accelerated Neuroevolution Potential), an optimized version of the NEP training code. This implementation provides a comprehensive framework for achieving 4-10x speedups while maintaining numerical equivalence.

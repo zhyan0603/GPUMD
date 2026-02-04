@@ -33,7 +33,8 @@ int main(int argc, char* argv[])
   print_gpu_information();
 
   print_line_1();
-  printf("Started running nep.\n");
+  printf("Started running ACNEP (Accelerated NEP).\n");
+  printf("Note: Optimizations are in stub form - no speedup expected yet.\n");
   print_line_2();
 
   const auto time_begin1 = std::chrono::high_resolution_clock::now();
@@ -61,7 +62,7 @@ int main(int argc, char* argv[])
   print_line_2();
 
   print_line_1();
-  printf("Finished running nep.\n");
+  printf("Finished running ACNEP.\n");
   print_line_2();
 
   return EXIT_SUCCESS;
@@ -74,7 +75,12 @@ void print_welcome_information(void)
   printf("*                 Welcome to use GPUMD                        *\n");
   printf("*    (Graphics Processing Units Molecular Dynamics)           *\n");
   printf("*                     version 4.8                             *\n");
-  printf("*              This is the nep executable                     *\n");
+  printf("*            This is the ACNEP executable                     *\n");
+  printf("*        (Accelerated Neuroevolution Potential)               *\n");
+  printf("*                                                             *\n");
+  printf("*  WARNING: Optimizations are currently in development!       *\n");
+  printf("*  Current version is identical to NEP (no speedup yet).      *\n");
+  printf("*  See src/main_acnep/IMPLEMENTATION_GUIDE.md for details.    *\n");
   printf("***************************************************************\n");
   printf("\n");
 }

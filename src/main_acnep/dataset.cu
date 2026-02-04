@@ -433,6 +433,13 @@ void Dataset::construct(
   find_Na(para);
   initialize_gpu_data(para);
   find_neighbor(para);
+  
+  // ACNEP: Attempt pre-computation (currently a stub - will be no-op)
+  // This is here to prepare infrastructure for future optimization
+  // When fully implemented, this will cache geometric data for speedup
+  printf("\n[ACNEP] Attempting geometry pre-computation...\n");
+  precompute_geometry(para);
+  printf("[ACNEP] Pre-computation complete (currently stub - no optimization active).\n\n");
 }
 
 static __global__ void gpu_sum_force_error(
@@ -1058,13 +1065,28 @@ std::vector<float> Dataset::get_rmse_bec(Parameters& para, int device_id)
 // This function is called once during Dataset::construct() to cache all
 // geometric data that remains constant across PSO generations.
 // Major speedup by eliminating the neighbor list kernel from training loop.
+//
+// CURRENT STATUS: STUB IMPLEMENTATION - NO OPTIMIZATION ACTIVE
+// This is a placeholder that allocates the cache structure but does not
+// populate it with actual data. The cache will be marked as invalid so
+// the training will fall back to the original NEP computation path.
+//
+// To implement the actual optimization, see:
+//   src/main_acnep/IMPLEMENTATION_GUIDE.md - Phase 3
 
 void Dataset::precompute_geometry(Parameters& para)
 {
-  printf("\n=== ACNEP: Pre-computing geometric features ===\n");
+  printf("  [ACNEP] Allocating pre-computation cache structures...\n");
   
-  // Allocate cache arrays
+  // Allocate cache arrays (this is real, but they won't be populated)
   precomp_geom.allocate(N, max_NN_radial, max_NN_angular);
+  
+  printf("    N = %d atoms\n", N);
+  printf("    Nc = %d configurations\n", Nc);
+  printf("    max_NN_radial = %d\n", max_NN_radial);
+  printf("    max_NN_angular = %d\n", max_NN_angular);
+  printf("    Cache memory allocated: %.2f MB\n", 
+         (N * max_NN_radial * 5 + N * max_NN_angular * 5) * sizeof(float) / 1e6);
   
   // TODO: Implement the actual pre-computation kernels
   // This requires implementing:
@@ -1072,18 +1094,11 @@ void Dataset::precompute_geometry(Parameters& para)
   //   2. Compute and store all displacement vectors
   //   3. Compute and store all distances (NEW: avoid recomputing sqrt!)
   //   4. Sort neighbors by index to preserve summation order
+  //
+  // For now, mark cache as INVALID so training falls back to original path
   
-  printf("  N = %d atoms\n", N);
-  printf("  Nc = %d configurations\n", Nc);
-  printf("  max_NN_radial = %d\n", max_NN_radial);
-  printf("  max_NN_angular = %d\n", max_NN_angular);
+  precomp_geom.is_cached = false;  // CHANGED: Mark as invalid (no actual data)
   
-  // For now, this is a stub. The actual implementation would:
-  // 1. Launch optimized neighbor list kernel (possibly with cell lists)
-  // 2. Store results in precomp_geom arrays
-  // 3. Mark cache as valid
-  
-  precomp_geom.is_cached = true;
-  
-  printf("=== Pre-computation complete ===\n\n");
+  printf("  [ACNEP] Cache allocated but NOT populated (stub implementation).\n");
+  printf("  [ACNEP] Training will use original NEP computation (no speedup).\n");
 }
