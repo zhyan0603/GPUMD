@@ -14,7 +14,7 @@ The Makefile has been updated to build a new `acnep` executable alongside `nep` 
 - Added `SOURCES_ACNEP` for ACNEP source files
 - Added `OBJ_ACNEP` for object files (Linux and Windows)
 - Created `acnep` build target with proper linking
-- Added compilation rules for `acnep/` directory
+- Added compilation rules for `main_acnep/` directory
 - Integrated into `make all` for default builds
 
 **Building ACNEP:**
@@ -27,7 +27,7 @@ make acnep
 
 ### 2. ACNEP Source Code Structure ✅
 
-**Directory:** `src/acnep/`
+**Directory:** `src/main_acnep/`
 
 Created by copying `main_nep/` with renamed files:
 - `acnep.cu` (from nep.cu) - Core NEP potential code
@@ -39,7 +39,7 @@ All includes have been updated to reference `acnep.cuh` and `acfitness.cuh` inst
 
 ### 3. Optimization Infrastructure ✅
 
-**File:** `src/acnep/acnep_optimization.cuh`
+**File:** `src/main_acnep/acnep_optimization.cuh`
 
 Defined comprehensive data structures and helper functions:
 
@@ -70,7 +70,7 @@ For tracking and reporting performance improvements.
 
 ### 4. Dataset Pre-computation Support ✅
 
-**Files:** `src/acnep/dataset.cuh`, `src/acnep/dataset.cu`
+**Files:** `src/main_acnep/dataset.cuh`, `src/main_acnep/dataset.cu`
 
 Modified Dataset class to support pre-computed geometry:
 - Added `PrecomputedGeometry precomp_geom` member
@@ -244,10 +244,10 @@ ls -lh acnep
 | File | Purpose | Status |
 |------|---------|--------|
 | `src/makefile` | Build configuration | ✅ Complete |
-| `src/acnep/*.cu/cuh` | ACNEP source code | ✅ Structure done, optimizations pending |
-| `src/acnep/acnep_optimization.cuh` | Optimization infrastructure | ✅ Complete |
-| `src/acnep/README_ACNEP.md` | User documentation | ✅ Complete |
-| `src/acnep/IMPLEMENTATION_GUIDE.md` | Developer guide | ✅ Complete |
+| `src/main_acnep/*.cu/cuh` | ACNEP source code | ✅ Structure done, optimizations pending |
+| `src/main_acnep/acnep_optimization.cuh` | Optimization infrastructure | ✅ Complete |
+| `src/main_acnep/README_ACNEP.md` | User documentation | ✅ Complete |
+| `src/main_acnep/IMPLEMENTATION_GUIDE.md` | Developer guide | ✅ Complete |
 | `MAKEFILE_CHANGES.md` | Build system docs | ✅ Complete |
 | `test_acnep_consistency.sh` | Test script | ✅ Complete |
 

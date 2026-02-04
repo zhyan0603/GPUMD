@@ -43,7 +43,7 @@ SOURCES_NEP =                     \
 	$(wildcard main_nep/*.cu)     \
 	$(wildcard utilities/*.cu)
 SOURCES_ACNEP =                   \
-	$(wildcard acnep/*.cu)        \
+	$(wildcard main_acnep/*.cu)   \
 	$(wildcard utilities/*.cu)
 SOURCES_GNEP =                     \
 	$(wildcard main_gnep/*.cu)     \
@@ -80,7 +80,7 @@ HEADERS =                         \
 	$(wildcard model/*.cuh)       \
 	$(wildcard phonon/*.cuh)      \
 	$(wildcard main_nep/*.cuh)    \
-	$(wildcard acnep/*.cuh)       \
+	$(wildcard main_acnep/*.cuh)  \
 	$(wildcard main_gnep/*.cuh)
 
 
@@ -134,7 +134,7 @@ phonon/%.obj: phonon/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 main_nep/%.obj: main_nep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-acnep/%.obj: acnep/%.cu $(HEADERS)
+main_acnep/%.obj: main_acnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 main_gnep/%.obj: main_gnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
@@ -159,7 +159,7 @@ phonon/%.o: phonon/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 main_nep/%.o: main_nep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-acnep/%.o: acnep/%.cu $(HEADERS)
+main_acnep/%.o: main_acnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 main_gnep/%.o: main_gnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@

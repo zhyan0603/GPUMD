@@ -26,7 +26,7 @@ SOURCES_NEP =                     \
 	$(wildcard main_nep/*.cu)     \
 	$(wildcard utilities/*.cu)
 SOURCES_ACNEP =                   \
-	$(wildcard acnep/*.cu)        \
+	$(wildcard main_acnep/*.cu)        \
 	$(wildcard utilities/*.cu)
 SOURCES_GNEP =                     \
 	$(wildcard main_gnep/*.cu)     \
@@ -102,11 +102,11 @@ HEADERS =                         \
 	$(wildcard model/*.cuh)       \
 	$(wildcard phonon/*.cuh)      \
 	$(wildcard main_nep/*.cuh)    \
-	$(wildcard acnep/*.cuh)       \
+	$(wildcard main_acnep/*.cuh)       \
 	$(wildcard main_gnep/*.cuh)
 ```
 
-**Explanation:** Added `$(wildcard acnep/*.cuh)` to include ACNEP header files in dependency tracking.
+**Explanation:** Added `$(wildcard main_acnep/*.cuh)` to include ACNEP header files in dependency tracking.
 
 ### 4. Added ACNEP Target
 
@@ -178,7 +178,7 @@ main_gnep/%.obj: main_gnep/%.cu $(HEADERS)
 ```makefile
 main_nep/%.obj: main_nep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-acnep/%.obj: acnep/%.cu $(HEADERS)
+main_acnep/%.obj: main_acnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 main_gnep/%.obj: main_gnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
@@ -202,7 +202,7 @@ main_gnep/%.o: main_gnep/%.cu $(HEADERS)
 ```makefile
 main_nep/%.o: main_nep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-acnep/%.o: acnep/%.cu $(HEADERS)
+main_acnep/%.o: main_acnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 main_gnep/%.o: main_gnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
@@ -304,8 +304,8 @@ ls -lh src/acnep
 ### Error: `nvcc: command not found`
 **Solution:** Install CUDA Toolkit and ensure `nvcc` is in your PATH.
 
-### Error: `No such file or directory: acnep/*.cu`
-**Solution:** Ensure the `src/acnep/` directory exists and contains `.cu` files.
+### Error: `No such file or directory: main_acnep/*.cu`
+**Solution:** Ensure the `src/main_acnep/` directory exists and contains `.cu` files.
 
 ### Error: Undefined references during linking
 **Solution:** Check that all required CUDA libraries are installed (`cublas`, `cusolver`, `cufft`).

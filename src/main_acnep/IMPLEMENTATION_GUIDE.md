@@ -7,7 +7,7 @@ This document provides detailed implementation steps for the ACNEP optimizations
 ## Project Structure
 
 ```
-src/acnep/
+src/main_acnep/
 ├── README_ACNEP.md              # High-level optimization overview
 ├── IMPLEMENTATION_GUIDE.md      # This file
 ├── acnep_optimization.cuh       # Optimization infrastructure (data structures, helpers)
@@ -33,7 +33,7 @@ src/acnep/
 
 #### Step 2.1: Integrate Pre-computation into Dataset::construct()
 
-**File:** `src/acnep/dataset.cu`
+**File:** `src/main_acnep/dataset.cu`
 
 **Location:** At end of `Dataset::construct()` function
 
@@ -52,7 +52,7 @@ void Dataset::construct(Parameters& para, std::vector<Structure>& structures, in
 
 #### Step 2.2: Implement Optimized Neighbor List Kernel
 
-**File:** `src/acnep/acnep.cu` (add before existing `gpu_find_neighbor_list`)
+**File:** `src/main_acnep/acnep.cu` (add before existing `gpu_find_neighbor_list`)
 
 **Implementation:**
 
@@ -169,7 +169,7 @@ __global__ void gpu_find_neighbor_list_optimized(
 
 #### Step 2.3: Implement Dataset::precompute_geometry()
 
-**File:** `src/acnep/dataset.cu` (already stubbed, implement here)
+**File:** `src/main_acnep/dataset.cu` (already stubbed, implement here)
 
 Replace the stub with:
 
@@ -225,7 +225,7 @@ void Dataset::precompute_geometry(Parameters& para)
 
 #### Step 3.1: Update find_descriptors_radial
 
-**File:** `src/acnep/acnep.cu`
+**File:** `src/main_acnep/acnep.cu`
 
 **Current signature:**
 ```cpp
@@ -272,7 +272,7 @@ float d12 = g_r[index];  // Use pre-computed distance!
 
 #### Step 3.2: Update NEP::find_force() to Use Cached Data
 
-**File:** `src/acnep/acnep.cu`
+**File:** `src/main_acnep/acnep.cu`
 
 Find the `NEP::find_force()` function and modify to check for cached geometry:
 
@@ -316,7 +316,7 @@ void NEP::find_force(
 
 #### Step 4.1: Extend Parameters Class
 
-**File:** `src/acnep/parameters.cuh`
+**File:** `src/main_acnep/parameters.cuh`
 
 Add near the end of the `Parameters` class:
 
@@ -332,7 +332,7 @@ public:
 
 #### Step 4.2: Parse Command-Line Flags
 
-**File:** `src/acnep/main_acnep.cu`
+**File:** `src/main_acnep/main_acnep.cu`
 
 ```cpp
 int main(int argc, char* argv[])
@@ -364,7 +364,7 @@ int main(int argc, char* argv[])
 
 #### Step 5.1: Add Consistency Checking to SNES
 
-**File:** `src/acnep/snes.cu`
+**File:** `src/main_acnep/snes.cu`
 
 In the main training loop:
 

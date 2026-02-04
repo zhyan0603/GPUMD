@@ -24,13 +24,13 @@ This creates the `acnep` executable alongside `nep` and `gpumd`.
   - Current status and next steps
 
 ### For Developers
-- **[src/acnep/README_ACNEP.md](src/acnep/README_ACNEP.md)** - Technical overview
+- **[src/main_acnep/README_ACNEP.md](src/main_acnep/README_ACNEP.md)** - Technical overview
   - All 6 optimization strategies explained
   - Code examples for each optimization
   - Expected speedup analysis
   - Verification strategy
 
-- **[src/acnep/IMPLEMENTATION_GUIDE.md](src/acnep/IMPLEMENTATION_GUIDE.md)** - Implementation instructions
+- **[src/main_acnep/IMPLEMENTATION_GUIDE.md](src/main_acnep/IMPLEMENTATION_GUIDE.md)** - Implementation instructions
   - Step-by-step implementation phases
   - Code snippets for each optimization
   - Integration points in existing code
@@ -63,7 +63,7 @@ Requirements:
 ├── test_acnep_consistency.sh        # Consistency test script
 └── src/
     ├── makefile                     # Updated with acnep target
-    ├── acnep/                       # ACNEP implementation
+    ├── main_acnep/                  # ACNEP implementation
     │   ├── README_ACNEP.md          # Technical overview
     │   ├── IMPLEMENTATION_GUIDE.md  # Step-by-step guide
     │   ├── acnep_optimization.cuh   # Optimization infrastructure
@@ -106,7 +106,7 @@ The infrastructure is complete and ready for optimization implementation:
    - Performance profiling
    - Multi-system validation
 
-See [IMPLEMENTATION_GUIDE.md](src/acnep/IMPLEMENTATION_GUIDE.md) for detailed steps.
+See [IMPLEMENTATION_GUIDE.md](src/main_acnep/IMPLEMENTATION_GUIDE.md) for detailed steps.
 
 ## Key Design Principles
 
@@ -163,7 +163,7 @@ Built-in consistency checking:
 
 When implementing optimizations:
 
-1. **Follow the guide:** Start with [IMPLEMENTATION_GUIDE.md](src/acnep/IMPLEMENTATION_GUIDE.md)
+1. **Follow the guide:** Start with [IMPLEMENTATION_GUIDE.md](src/main_acnep/IMPLEMENTATION_GUIDE.md)
 2. **Test incrementally:** Enable one optimization at a time
 3. **Verify consistency:** Run `test_acnep_consistency.sh` after each change
 4. **Profile performance:** Use `nsys profile` to validate speedups
@@ -172,9 +172,9 @@ When implementing optimizations:
 ## Support
 
 For implementation questions:
-- See [IMPLEMENTATION_GUIDE.md](src/acnep/IMPLEMENTATION_GUIDE.md) for step-by-step instructions
+- See [IMPLEMENTATION_GUIDE.md](src/main_acnep/IMPLEMENTATION_GUIDE.md) for step-by-step instructions
 - Check troubleshooting sections in documentation
-- Review code examples in [README_ACNEP.md](src/acnep/README_ACNEP.md)
+- Review code examples in [README_ACNEP.md](src/main_acnep/README_ACNEP.md)
 
 ## License
 
@@ -189,4 +189,4 @@ ACNEP optimizations designed to accelerate training while preserving the mathema
 
 **Current Status:** Infrastructure complete, optimization kernels ready for implementation.
 
-**Next Step:** Follow Phase 3 in [IMPLEMENTATION_GUIDE.md](src/acnep/IMPLEMENTATION_GUIDE.md) to implement pre-computation (highest impact).
+**Next Step:** Follow Phase 3 in [IMPLEMENTATION_GUIDE.md](src/main_acnep/IMPLEMENTATION_GUIDE.md) to implement pre-computation (highest impact).
