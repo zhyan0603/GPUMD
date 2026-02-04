@@ -15,6 +15,7 @@
 
 #pragma once
 #include "structure.cuh"
+#include "acnep_optimization.cuh"  // Include optimization infrastructure
 #include "utilities/gpu_vector.cuh"
 #include <vector>
 class Parameters;
@@ -80,8 +81,15 @@ public:
 
   std::vector<Structure> structures;
 
+  // ACNEP: Pre-computed geometry cache
+  ACNEP::PrecomputedGeometry precomp_geom;
+
   void
   construct(Parameters& para, std::vector<Structure>& structures, int n1, int n2, int device_id);
+  
+  // ACNEP: Pre-compute geometric features (neighbor lists, distances, etc.)
+  void precompute_geometry(Parameters& para);
+  
   std::vector<float> get_rmse_force(Parameters& para, const bool use_weight, int device_id);
   std::vector<float> get_rmse_energy(
     Parameters& para,

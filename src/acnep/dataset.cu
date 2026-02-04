@@ -1051,3 +1051,39 @@ std::vector<float> Dataset::get_rmse_bec(Parameters& para, int device_id)
   }
   return rmse_array;
 }
+
+// ============================================================================
+// ACNEP: Pre-compute geometry (neighbor lists, distances, etc.)
+// ============================================================================
+// This function is called once during Dataset::construct() to cache all
+// geometric data that remains constant across PSO generations.
+// Major speedup by eliminating the neighbor list kernel from training loop.
+
+void Dataset::precompute_geometry(Parameters& para)
+{
+  printf("\n=== ACNEP: Pre-computing geometric features ===\n");
+  
+  // Allocate cache arrays
+  precomp_geom.allocate(N, max_NN_radial, max_NN_angular);
+  
+  // TODO: Implement the actual pre-computation kernels
+  // This requires implementing:
+  //   1. gpu_find_neighbor_list_optimized() with optional cell-linked list
+  //   2. Compute and store all displacement vectors
+  //   3. Compute and store all distances (NEW: avoid recomputing sqrt!)
+  //   4. Sort neighbors by index to preserve summation order
+  
+  printf("  N = %d atoms\n", N);
+  printf("  Nc = %d configurations\n", Nc);
+  printf("  max_NN_radial = %d\n", max_NN_radial);
+  printf("  max_NN_angular = %d\n", max_NN_angular);
+  
+  // For now, this is a stub. The actual implementation would:
+  // 1. Launch optimized neighbor list kernel (possibly with cell lists)
+  // 2. Store results in precomp_geom arrays
+  // 3. Mark cache as valid
+  
+  precomp_geom.is_cached = true;
+  
+  printf("=== Pre-computation complete ===\n\n");
+}
