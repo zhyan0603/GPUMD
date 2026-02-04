@@ -96,11 +96,12 @@ public:
 
   // ACNEP: Wrapper function to launch cached neighbor list kernel
   static void launch_neighbor_list_with_cache(
-    const ParaMB& paramb,
     const int N,
     const int* Na,
     const int* Na_sum,
     const int* g_type,
+    const float* g_rc_radial,
+    const float* g_rc_angular,
     const float* g_box,
     const float* g_box_original,
     const int* g_num_cell,

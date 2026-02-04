@@ -38,11 +38,12 @@ heat transport, Phys. Rev. B. 104, 104309 (2021).
 // redundant sqrt() calls in descriptor kernels. Called once at startup.
 
 __global__ void gpu_find_neighbor_list_with_cache(
-  const NEP::ParaMB paramb,
   const int N,
   const int* Na,
   const int* Na_sum,
   const int* g_type,
+  const float* __restrict__ g_rc_radial,
+  const float* __restrict__ g_rc_angular,
   const float* __restrict__ g_box,
   const float* __restrict__ g_box_original,
   const int* __restrict__ g_num_cell,
@@ -90,8 +91,8 @@ __global__ void gpu_find_neighbor_list_with_cache(
             dev_apply_mic(box, x12, y12, z12);
             float distance_square = x12 * x12 + y12 * y12 + z12 * z12;
             int t2 = g_type[n2];
-            float rc_radial = (paramb.rc_radial[t1] + paramb.rc_radial[t2]) * 0.5f;
-            float rc_angular = (paramb.rc_angular[t1] + paramb.rc_angular[t2]) * 0.5f;
+            float rc_radial = (g_rc_radial[t1] + g_rc_radial[t2]) * 0.5f;
+            float rc_angular = (g_rc_angular[t1] + g_rc_angular[t2]) * 0.5f;
             
             if (distance_square < rc_radial * rc_radial) {
               float distance = sqrt(distance_square);  // Compute once and cache!
@@ -907,11 +908,12 @@ static __global__ void find_force_ZBL(
 // the optimized neighbor list kernel that caches distances.
 
 void NEP::launch_neighbor_list_with_cache(
-  const ParaMB& paramb,
   const int N,
   const int* Na,
   const int* Na_sum,
   const int* g_type,
+  const float* g_rc_radial,
+  const float* g_rc_angular,
   const float* g_box,
   const float* g_box_original,
   const int* g_num_cell,
@@ -933,11 +935,12 @@ void NEP::launch_neighbor_list_with_cache(
   int Nc)
 {
   gpu_find_neighbor_list_with_cache<<<Nc, 256>>>(
-    paramb,
     N,
     Na,
     Na_sum,
     g_type,
+    g_rc_radial,
+    g_rc_angular,
     g_box,
     g_box_original,
     g_num_cell,

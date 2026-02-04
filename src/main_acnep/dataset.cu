@@ -14,6 +14,7 @@
 */
 
 #include "dataset.cuh"
+#include "acnep.cuh"
 #include "mic.cuh"
 #include "parameters.cuh"
 #include "utilities/common.cuh"
@@ -1082,14 +1083,21 @@ void Dataset::precompute_geometry(Parameters& para)
   printf("    Cache memory allocated: %.2f MB\n", 
          (N * max_NN_radial * 5 + N * max_NN_angular * 5) * sizeof(float) / 1e6);
   
+  // Prepare GPU cutoff arrays
+  GPU_Vector<float> rc_radial(para.rc_radial.size());
+  rc_radial.copy_from_host(para.rc_radial.data());
+  GPU_Vector<float> rc_angular(para.rc_angular.size());
+  rc_angular.copy_from_host(para.rc_angular.data());
+  
   // Launch optimized neighbor list kernel to populate cache
   printf("  [ACNEP] Computing neighbor lists with distance caching...\n");
   NEP::launch_neighbor_list_with_cache(
-    para.paramb,
     N,
     Na.data(),
     Na_sum.data(),
     type.data(),
+    rc_radial.data(),
+    rc_angular.data(),
     box.data(),
     box_original.data(),
     num_cell.data(),
