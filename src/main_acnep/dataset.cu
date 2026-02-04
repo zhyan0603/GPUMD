@@ -1068,32 +1068,6 @@ std::vector<float> Dataset::get_rmse_bec(Parameters& para, int device_id)
 // geometric data that remains constant across PSO generations.
 // Major speedup by eliminating the neighbor list kernel from training loop.
 
-// Forward declaration of the optimized kernel (defined in acnep.cu)
-__global__ void gpu_find_neighbor_list_with_cache(
-  const NEP::ParaMB paramb,
-  const int N,
-  const int* Na,
-  const int* Na_sum,
-  const int* g_type,
-  const float* __restrict__ g_box,
-  const float* __restrict__ g_box_original,
-  const int* __restrict__ g_num_cell,
-  const float* x,
-  const float* y,
-  const float* z,
-  int* NN_radial,
-  int* NL_radial,
-  int* NN_angular,
-  int* NL_angular,
-  float* x12_radial,
-  float* y12_radial,
-  float* z12_radial,
-  float* r_radial,
-  float* x12_angular,
-  float* y12_angular,
-  float* z12_angular,
-  float* r_angular);
-
 void Dataset::precompute_geometry(Parameters& para)
 {
   printf("  [ACNEP] Pre-computing geometric features...\n");
@@ -1110,7 +1084,7 @@ void Dataset::precompute_geometry(Parameters& para)
   
   // Launch optimized neighbor list kernel to populate cache
   printf("  [ACNEP] Computing neighbor lists with distance caching...\n");
-  gpu_find_neighbor_list_with_cache<<<Nc, 256>>>(
+  NEP::launch_neighbor_list_with_cache(
     para.paramb,
     N,
     Na.data(),
@@ -1133,7 +1107,8 @@ void Dataset::precompute_geometry(Parameters& para)
     precomp_geom.x12_angular.data(),
     precomp_geom.y12_angular.data(),
     precomp_geom.z12_angular.data(),
-    precomp_geom.r_angular.data()
+    precomp_geom.r_angular.data(),
+    Nc
   );
   
   CHECK(gpuDeviceSynchronize());
@@ -1144,8 +1119,4 @@ void Dataset::precompute_geometry(Parameters& para)
   
   printf("  [ACNEP] Pre-computation complete! Optimization ACTIVE.\n");
   printf("  [ACNEP] Training will use cached geometry (expected 2-5x speedup).\n");
-}
-  
-  printf("  [ACNEP] Cache allocated but NOT populated (stub implementation).\n");
-  printf("  [ACNEP] Training will use original NEP computation (no speedup).\n");
 }

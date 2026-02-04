@@ -94,6 +94,33 @@ public:
     bool calculate_neighbor,
     int deviceCount);
 
+  // ACNEP: Wrapper function to launch cached neighbor list kernel
+  static void launch_neighbor_list_with_cache(
+    const ParaMB& paramb,
+    const int N,
+    const int* Na,
+    const int* Na_sum,
+    const int* g_type,
+    const float* g_box,
+    const float* g_box_original,
+    const int* g_num_cell,
+    const float* x,
+    const float* y,
+    const float* z,
+    int* NN_radial,
+    int* NL_radial,
+    int* NN_angular,
+    int* NL_angular,
+    float* x12_radial,
+    float* y12_radial,
+    float* z12_radial,
+    float* r_radial,
+    float* x12_angular,
+    float* y12_angular,
+    float* z12_angular,
+    float* r_angular,
+    int Nc);
+
 private:
   ParaMB paramb;
   ANN annmb[16];
