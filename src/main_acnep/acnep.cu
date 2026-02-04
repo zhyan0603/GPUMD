@@ -222,10 +222,7 @@ static __global__ void find_descriptors_radial_cached(
     for (int i1 = 0; i1 < neighbor_number; ++i1) {
       int index = n1 + N * i1;
       int n2 = g_NL[index];
-      float x12 = g_x12[index];
-      float y12 = g_y12[index];
-      float z12 = g_z12[index];
-      float d12 = g_r[index];  // OPTIMIZED: Use cached distance instead of sqrt()
+      float d12 = g_r[index];  // OPTIMIZED: Use cached distance (displacement vectors not needed for radial)
       float fc12;
       int t2 = g_type[n2];
       float rc = (paramb.rc_radial[t1] + paramb.rc_radial[t2]) * 0.5f;
