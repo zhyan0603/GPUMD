@@ -72,6 +72,8 @@ private:
   std::vector<int> num_atoms_per_group_;
   std::vector<int> group_per_atom_cpu_;
   int num_time_origins_;
+  bool use_all_samples_ = false;
+  std::vector<long long> num_time_origins_per_lag_;
   int save_output_every_ = -1;
   double dt_in_natural_units_;
   double dt_in_ps_;
