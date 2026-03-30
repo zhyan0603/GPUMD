@@ -20,7 +20,7 @@ with parameters defined as
 * :attr:`sample_interval`: Sampling interval of the position data
 * :attr:`Nc`: Maximum number of correlation steps
 
-The optional argument :attr:`optional_arg` allows three additional special keyword.
+The optional argument :attr:`optional_arg` allows four additional special keywords.
 The first special keyword is :attr:`group`.
 The parameters are:
 
@@ -40,6 +40,10 @@ The file will have a name formatted as ``msd_step[step].out``.
 The parameters are:
 
 * :attr:`save_every <interval>`, where :attr:`interval` is the number of steps between saving a copy. Note that the copy can only be written at most every :attr:`sample_interval` steps. Furthermore, the first ``msd_step[step].out`` file will be written after :attr:`Nc` times :attr:`sample_interval` steps. Subsequent files will be written every :attr:`interval`.
+
+The fourth special keyword is :attr:`all_samples`.
+When this keyword is present, all sampled positions are stored and used as time origins in the MSD average (instead of the default circular buffer implementation that reuses only :attr:`Nc` samples).
+This can reduce statistical differences versus post-processing scripts that average over all samples, at the cost of higher GPU memory usage.
 
 
 Examples

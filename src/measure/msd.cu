@@ -148,6 +148,65 @@ __global__ void gpu_find_msd(
   }
 }
 
+__global__ void gpu_find_msd_all_samples(
+  const int num_atoms,
+  const int current_sample,
+  const int num_correlation_steps,
+  const double* g_x_all,
+  const double* g_y_all,
+  const double* g_z_all,
+  double* g_msd_x,
+  double* g_msd_y,
+  double* g_msd_z)
+{
+  const int tid = threadIdx.x;
+  const int lag = blockIdx.x;
+  if (lag >= num_correlation_steps || lag > current_sample) {
+    return;
+  }
+  const int current_offset = current_sample * num_atoms;
+  const int reference_offset = (current_sample - lag) * num_atoms;
+  const int number_of_rounds = (num_atoms - 1) / 128 + 1;
+  __shared__ double s_msd_x[128];
+  __shared__ double s_msd_y[128];
+  __shared__ double s_msd_z[128];
+  double msd_x = 0.0;
+  double msd_y = 0.0;
+  double msd_z = 0.0;
+
+  for (int round = 0; round < number_of_rounds; ++round) {
+    const int n = tid + round * 128;
+    if (n < num_atoms) {
+      double tmp = g_x_all[current_offset + n] - g_x_all[reference_offset + n];
+      msd_x += tmp * tmp;
+      tmp = g_y_all[current_offset + n] - g_y_all[reference_offset + n];
+      msd_y += tmp * tmp;
+      tmp = g_z_all[current_offset + n] - g_z_all[reference_offset + n];
+      msd_z += tmp * tmp;
+    }
+  }
+
+  s_msd_x[tid] = msd_x;
+  s_msd_y[tid] = msd_y;
+  s_msd_z[tid] = msd_z;
+  __syncthreads();
+
+  for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
+    if (tid < offset) {
+      s_msd_x[tid] += s_msd_x[tid + offset];
+      s_msd_y[tid] += s_msd_y[tid + offset];
+      s_msd_z[tid] += s_msd_z[tid + offset];
+    }
+    __syncthreads();
+  }
+
+  if (tid == 0) {
+    g_msd_x[lag] += s_msd_x[0];
+    g_msd_y[lag] += s_msd_y[0];
+    g_msd_z[lag] += s_msd_z[0];
+  }
+}
+
   __global__ void gpu_find_msd_per_group(
     const int num_atoms,
     const int num_groups,
@@ -180,7 +239,8 @@ __global__ void gpu_find_msd(
       if (n < num_atoms) {
 
         int group = group_ids[n];
-        if (group < 0 || group >= num_groups) return;
+        if (group < 0 || group >= num_groups)
+          continue;
 
         double dx = g_x[n] - g_x_start[size_sum + n];
         double dy = g_y[n] - g_y_start[size_sum + n];
@@ -200,6 +260,45 @@ __global__ void gpu_find_msd(
       }
     }
   }
+
+__global__ void gpu_find_msd_per_group_all_samples(
+  const int num_atoms,
+  const int num_groups,
+  const int current_sample,
+  const int num_correlation_steps,
+  const int* group_ids,
+  const double* g_x_all,
+  const double* g_y_all,
+  const double* g_z_all,
+  double* g_msd_x,  // [num_groups * time_lags]
+  double* g_msd_y,
+  double* g_msd_z)
+{
+  const int tid = threadIdx.x;
+  const int lag = blockIdx.x;
+  if (lag >= num_correlation_steps || lag > current_sample) {
+    return;
+  }
+  const int current_offset = current_sample * num_atoms;
+  const int reference_offset = (current_sample - lag) * num_atoms;
+  const int number_of_rounds = (num_atoms - 1) / blockDim.x + 1;
+
+  for (int round = 0; round < number_of_rounds; ++round) {
+    const int n = tid + round * blockDim.x;
+    if (n < num_atoms) {
+      const int group = group_ids[n];
+      if (group < 0 || group >= num_groups)
+        continue;
+      const double dx = g_x_all[current_offset + n] - g_x_all[reference_offset + n];
+      const double dy = g_y_all[current_offset + n] - g_y_all[reference_offset + n];
+      const double dz = g_z_all[current_offset + n] - g_z_all[reference_offset + n];
+      const int output_offset = group * num_correlation_steps + lag;
+      atomicAdd(&g_msd_x[output_offset], dx * dx);
+      atomicAdd(&g_msd_y[output_offset], dy * dy);
+      atomicAdd(&g_msd_z[output_offset], dz * dz);
+    }
+  }
+}
 } //namespace
 
 void MSD::preprocess(
@@ -251,9 +350,11 @@ void MSD::preprocess(
   
   dt_in_natural_units_ = time_step * sample_interval_;
   dt_in_ps_ = dt_in_natural_units_ * TIME_UNIT_CONVERSION / 1000.0;
-  x_.resize(num_atoms_ * num_correlation_steps_);
-  y_.resize(num_atoms_ * num_correlation_steps_);
-  z_.resize(num_atoms_ * num_correlation_steps_);
+  const int max_num_samples = number_of_steps / sample_interval_;
+  const int num_samples_to_store = use_all_samples_ ? max_num_samples : num_correlation_steps_;
+  x_.resize(num_atoms_ * num_samples_to_store);
+  y_.resize(num_atoms_ * num_samples_to_store);
+  z_.resize(num_atoms_ * num_samples_to_store);
   msdx_.resize(num_correlation_steps_ * num_groups_, 0.0, Memory_Type::managed);
   msdy_.resize(num_correlation_steps_ * num_groups_, 0.0, Memory_Type::managed);
   msdz_.resize(num_correlation_steps_ * num_groups_, 0.0, Memory_Type::managed);
@@ -262,6 +363,7 @@ void MSD::preprocess(
   msdz_out_.resize(num_correlation_steps_ * num_groups_, 0.0, Memory_Type::managed);
 
   num_time_origins_ = 0;
+  num_time_origins_per_lag_.resize(num_correlation_steps_, 0);
 }
 
 void MSD::process(
@@ -285,7 +387,8 @@ void MSD::process(
 
   const int sample_step = step / sample_interval_;
   const int correlation_step = sample_step % num_correlation_steps_;
-  const int step_offset = correlation_step * num_atoms_;
+  const int storage_step = use_all_samples_ ? sample_step : correlation_step;
+  const int step_offset = storage_step * num_atoms_;
   const int number_of_atoms_total = atom.number_of_atoms;
 
   // copy the position data at the current step to appropriate place
@@ -312,43 +415,77 @@ void MSD::process(
       z_.data() + step_offset);
   }
   GPU_CHECK_KERNEL
+  const bool have_enough_frames = sample_step >= num_correlation_steps_ - 1;
 
-  // start to calculate the MSD when we have enough frames
-  if (sample_step >= num_correlation_steps_ - 1) {
+  // start to calculate the MSD
+  if ((use_all_samples_ && sample_step >= 0) || (!use_all_samples_ && have_enough_frames)) {
     ++num_time_origins_;
 
-    if (msd_over_all_groups_) {
-      gpu_find_msd_per_group<<<num_correlation_steps_, 128>>>(
-        num_atoms_,
-        num_groups_,
-        correlation_step,
-        num_correlation_steps_,
-        group_per_atom_gpu_.data(),
-        x_.data() + step_offset,
-        y_.data() + step_offset,
-        z_.data() + step_offset,
-        x_.data(),
-        y_.data(),
-        z_.data(),
-        msdx_.data(),
-        msdy_.data(),
-        msdz_.data());
-      GPU_CHECK_KERNEL
-
+    if (use_all_samples_) {
+      const int max_lag = sample_step < (num_correlation_steps_ - 1) ? sample_step : (num_correlation_steps_ - 1);
+      for (int lag = 0; lag <= max_lag; ++lag) {
+        ++num_time_origins_per_lag_[lag];
+      }
+      if (msd_over_all_groups_) {
+        gpu_find_msd_per_group_all_samples<<<num_correlation_steps_, 128>>>(
+          num_atoms_,
+          num_groups_,
+          sample_step,
+          num_correlation_steps_,
+          group_per_atom_gpu_.data(),
+          x_.data(),
+          y_.data(),
+          z_.data(),
+          msdx_.data(),
+          msdy_.data(),
+          msdz_.data());
+        GPU_CHECK_KERNEL
+      } else {
+        gpu_find_msd_all_samples<<<num_correlation_steps_, 128>>>(
+          num_atoms_,
+          sample_step,
+          num_correlation_steps_,
+          x_.data(),
+          y_.data(),
+          z_.data(),
+          msdx_.data(),
+          msdy_.data(),
+          msdz_.data());
+        GPU_CHECK_KERNEL
+      }
     } else {
-      gpu_find_msd<<<num_correlation_steps_, 128>>>(
-        num_atoms_,
-        correlation_step,
-        x_.data() + step_offset,
-        y_.data() + step_offset,
-        z_.data() + step_offset,
-        x_.data(),
-        y_.data(),
-        z_.data(),
-        msdx_.data(),
-        msdy_.data(),
-        msdz_.data());
-      GPU_CHECK_KERNEL
+      if (msd_over_all_groups_) {
+        gpu_find_msd_per_group<<<num_correlation_steps_, 128>>>(
+          num_atoms_,
+          num_groups_,
+          correlation_step,
+          num_correlation_steps_,
+          group_per_atom_gpu_.data(),
+          x_.data() + step_offset,
+          y_.data() + step_offset,
+          z_.data() + step_offset,
+          x_.data(),
+          y_.data(),
+          z_.data(),
+          msdx_.data(),
+          msdy_.data(),
+          msdz_.data());
+        GPU_CHECK_KERNEL
+      } else {
+        gpu_find_msd<<<num_correlation_steps_, 128>>>(
+          num_atoms_,
+          correlation_step,
+          x_.data() + step_offset,
+          y_.data() + step_offset,
+          z_.data() + step_offset,
+          x_.data(),
+          y_.data(),
+          z_.data(),
+          msdx_.data(),
+          msdy_.data(),
+          msdz_.data());
+        GPU_CHECK_KERNEL
+      }
     }
     if (save_output_every_ > 0) {
       if (0 == (step + 1) % save_output_every_) {
@@ -371,16 +508,15 @@ void MSD::write(const char* filename)
   // normalize by the number of atoms and number of time origins
   for (int group_id=0; group_id < num_groups_; group_id++) {
     int num_atoms = num_atoms_per_group_[group_id];
-    
-    // This is the case for empty groups and if the msd has yet to be computed
-    double msd_scaler = 0.0;
-    if (num_atoms > 0 && num_time_origins_ > 0) {
-      // num_time_origins_ should be different for each nc
-      msd_scaler = 1.0 / ((double)num_atoms * (double)num_time_origins_);
-    } 
 
     int group_index = group_id * num_correlation_steps_;
-    for (int nc = group_index + 0; nc < group_index + num_correlation_steps_; nc++) {
+    for (int lag = 0; lag < num_correlation_steps_; lag++) {
+      double msd_scaler = 0.0;
+      const long long num_time_origins = use_all_samples_ ? num_time_origins_per_lag_[lag] : num_time_origins_;
+      if (num_atoms > 0 && num_time_origins > 0) {
+        msd_scaler = 1.0 / ((double)num_atoms * (double)num_time_origins);
+      }
+      const int nc = group_index + lag;
       msdx_out_[nc] = msdx_[nc] * msd_scaler;
       msdy_out_[nc] = msdy_[nc] * msd_scaler;
       msdz_out_[nc] = msdz_[nc] * msd_scaler;
@@ -501,6 +637,9 @@ void MSD::parse(const char** param, const int num_param, const std::vector<Group
       }
       printf("    will save a copy of the MSD every %d steps.\n", save_output_every_);
       k += 1; // update index for next command
+    } else if (strcmp(param[k], "all_samples") == 0) {
+      use_all_samples_ = true;
+      printf("    will use all sampled positions for MSD (higher memory usage).\n");
     } else {
       PRINT_INPUT_ERROR("Unrecognized argument in compute_msd.\n");
     }
