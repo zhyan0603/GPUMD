@@ -239,7 +239,8 @@ __global__ void gpu_find_msd_all_samples(
       if (n < num_atoms) {
 
         int group = group_ids[n];
-        if (group < 0 || group >= num_groups) return;
+        if (group < 0 || group >= num_groups)
+          continue;
 
         double dx = g_x[n] - g_x_start[size_sum + n];
         double dy = g_y[n] - g_y_start[size_sum + n];
@@ -287,7 +288,7 @@ __global__ void gpu_find_msd_per_group_all_samples(
     if (n < num_atoms) {
       const int group = group_ids[n];
       if (group < 0 || group >= num_groups)
-        return;
+        continue;
       const double dx = g_x_all[current_offset + n] - g_x_all[reference_offset + n];
       const double dy = g_y_all[current_offset + n] - g_y_all[reference_offset + n];
       const double dz = g_z_all[current_offset + n] - g_z_all[reference_offset + n];

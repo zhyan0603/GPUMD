@@ -20,7 +20,7 @@ with parameters defined as
 * :attr:`sample_interval`: Sampling interval of the position data
 * :attr:`Nc`: Maximum number of correlation steps
 
-The optional argument :attr:`optional_arg` allows four additional special keyword.
+The optional argument :attr:`optional_arg` allows four additional special keywords.
 The first special keyword is :attr:`group`.
 The parameters are:
 
