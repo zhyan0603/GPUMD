@@ -352,9 +352,10 @@ void read_xyz_in_line_3(
 
     if (infer_type_from_xyz) {
       int type_id = -1;
-      for (size_t t = 0; t < atom_symbols.size(); ++t) {
+      const int num_symbols = (int)atom_symbols.size();
+      for (int t = 0; t < num_symbols; ++t) {
         if (cpu_atom_symbol[n] == atom_symbols[t]) {
-          type_id = (int)t;
+          type_id = t;
           break;
         }
       }
