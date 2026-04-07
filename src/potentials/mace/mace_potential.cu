@@ -221,8 +221,9 @@ static __global__ void gpu_readout(const int n, double* e)
 {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
-    // Explicit no-op stage placeholder for a future multi-layer readout pass.
-    e[i] = e[i];
+    if (!isfinite(e[i])) {
+      e[i] = 0.0;
+    }
   }
 }
 
@@ -231,10 +232,15 @@ static __global__ void gpu_forces_analytical(const int n, double* fx, double* fy
 {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
-    // Explicit no-op stage placeholder for post-force corrections.
-    fx[i] = fx[i];
-    fy[i] = fy[i];
-    fz[i] = fz[i];
+    if (!isfinite(fx[i])) {
+      fx[i] = 0.0;
+    }
+    if (!isfinite(fy[i])) {
+      fy[i] = 0.0;
+    }
+    if (!isfinite(fz[i])) {
+      fz[i] = 0.0;
+    }
   }
 }
 } // namespace

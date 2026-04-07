@@ -246,10 +246,7 @@ def main() -> None:
     print("   - embedding:", emb_key)
     print("   - radial:", radial_key)
     print("   - readout:", ro_key)
-    print("\nUsage:")
-    print("  python convert_mace_pt_to_mace.py model.pt output.mace")
 
 
 if __name__ == "__main__":
     main()
-
