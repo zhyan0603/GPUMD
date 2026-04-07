@@ -43,7 +43,7 @@ import argparse
 import struct
 import sys
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
 
@@ -159,7 +159,7 @@ def _format_tensor_summary(sd: Dict[str, torch.Tensor], limit: int = 80) -> str:
 
 def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any]:
     # species embedding
-    emb_candidates: list[Tuple[str, torch.Tensor]] = []
+    emb_candidates: List[Tuple[str, torch.Tensor]] = []
     emb_match = _find_by_token_sets(
         sd,
         (
@@ -207,14 +207,14 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
             radial_match = sorted(all_3d, key=lambda x: x[1].numel(), reverse=True)[0]
     if radial_match is None:
         # fallback to interaction-like 2D weight
-        all_2d_interaction = []
+        all_2d_interactions = []
         for k, v in sd.items():
             if isinstance(v, torch.Tensor) and v.dim() == 2 and "weight" in k.lower():
                 kl = k.lower()
                 if "interactions" in kl or "message" in kl or "radial" in kl:
-                    all_2d_interaction.append((k, v))
-        if all_2d_interaction:
-            radial_match = sorted(all_2d_interaction, key=lambda x: x[1].numel(), reverse=True)[0]
+                    all_2d_interactions.append((k, v))
+        if all_2d_interactions:
+            radial_match = sorted(all_2d_interactions, key=lambda x: x[1].numel(), reverse=True)[0]
     if radial_match is None:
         raise RuntimeError("Failed to find radial weight tensor candidate.")
 
