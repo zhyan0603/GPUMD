@@ -4,7 +4,7 @@ Offline MACE PyTorch checkpoint -> native .mace converter.
 
 Runtime dependency policy:
   - torch is required only in this offline converter.
-  - gpumd_mace runtime has zero Python / zero torch dependency.
+  - gpumd_mace runtime has zero Python / zero torch dependencies.
 
 Binary .mace format (little-endian):
   Header (fixed 76 bytes):
