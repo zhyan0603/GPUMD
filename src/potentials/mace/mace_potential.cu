@@ -164,7 +164,7 @@ static __global__ void gpu_message_passing(
       float g = 0.0f;
       float dg = 0.0f;
       // only first interaction block is used in this standalone invariant implementation
-      const int t = min(0, num_interactions - 1);
+      const int t = 0;
       const int base = (t * num_channels + c) * num_radial;
       for (int m = 0; m < num_radial; ++m) {
         float phi = 0.0f;
@@ -221,6 +221,7 @@ static __global__ void gpu_readout(const int n, double* e)
 {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
+    // Explicit no-op stage placeholder for a future multi-layer readout pass.
     e[i] = e[i];
   }
 }
@@ -230,6 +231,7 @@ static __global__ void gpu_forces_analytical(const int n, double* fx, double* fy
 {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
+    // Explicit no-op stage placeholder for post-force corrections.
     fx[i] = fx[i];
     fy[i] = fy[i];
     fz[i] = fz[i];
