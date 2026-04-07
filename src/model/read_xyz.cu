@@ -503,11 +503,14 @@ static std::vector<std::string> get_atom_symbols(std::string& filename_potential
     size_t parsed_length = 0;
     number_of_types = std::stoi(tokens[1], &parsed_length);
     if (parsed_length != tokens[1].size() || number_of_types <= 0) {
-      throw std::invalid_argument("invalid atom type count token");
+      throw std::invalid_argument("atom type count must be a positive integer");
     }
   } catch (const std::exception&) {
-    std::cout << "Warning: cannot parse atom-type count from potential file " << filename_potential
-              << ". Fall back to inferring species from model.xyz." << std::endl;
+    std::cout << "Warning: cannot parse atom-type count token '" << tokens[1]
+              << "' from potential file " << filename_potential
+              << ". The count must be a positive integer. Fall back to inferring species from "
+                 "model.xyz."
+              << std::endl;
     input_potential.close();
     return std::vector<std::string>();
   }

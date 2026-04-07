@@ -191,7 +191,7 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
             emb_candidates = all_2d
         else:
             raise RuntimeError("Failed to find a 2D species embedding tensor candidate.")
-    emb_key, species_embedding = sorted(emb_candidates, key=lambda x: x[1].numel())[0]
+    emb_key, species_embedding = min(emb_candidates, key=lambda x: x[1].numel())
     species_embedding = species_embedding.detach().cpu().float().contiguous()
     num_species, num_channels = species_embedding.shape
 
@@ -243,6 +243,10 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
     if radial_w.shape[1] != num_channels:
         # best-effort transpose fallback
         c_old = radial_w.shape[1]
+        print(
+            f"[WARN] Radial channel mismatch ({c_old} -> {num_channels}); applying resize fallback.",
+            file=sys.stderr,
+        )
         if c_old > num_channels:
             radial_w = radial_w[:, :num_channels, :].contiguous()
         else:
