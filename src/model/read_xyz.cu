@@ -334,6 +334,7 @@ void read_xyz_in_line_3(
   cpu_position_per_atom.resize(N * 3);
   cpu_velocity_per_atom.resize(N * 3);
   number_of_types = atom_symbols.size();
+  const bool infer_type_from_xyz = (number_of_types == 0);
 
   for (int m = 0; m < group.size(); ++m) {
     group[m].cpu_label.resize(N);
@@ -348,15 +349,31 @@ void read_xyz_in_line_3(
 
     cpu_atom_symbol[n] = tokens[property_offset[0]];
 
-    bool is_allowed_element = false;
-    for (int t = 0; t < number_of_types; ++t) {
-      if (cpu_atom_symbol[n] == atom_symbols[t]) {
-        cpu_type[n] = t;
-        is_allowed_element = true;
+    if (infer_type_from_xyz) {
+      int type_id = -1;
+      for (int t = 0; t < atom_symbols.size(); ++t) {
+        if (cpu_atom_symbol[n] == atom_symbols[t]) {
+          type_id = t;
+          break;
+        }
       }
-    }
-    if (!is_allowed_element) {
-      PRINT_INPUT_ERROR("There is atom in model.xyz that is not allowed in the used potential.\n");
+      if (type_id < 0) {
+        atom_symbols.push_back(cpu_atom_symbol[n]);
+        type_id = (int)atom_symbols.size() - 1;
+      }
+      cpu_type[n] = type_id;
+    } else {
+      bool is_allowed_element = false;
+      for (int t = 0; t < number_of_types; ++t) {
+        if (cpu_atom_symbol[n] == atom_symbols[t]) {
+          cpu_type[n] = t;
+          is_allowed_element = true;
+          break;
+        }
+      }
+      if (!is_allowed_element) {
+        PRINT_INPUT_ERROR("There is atom in model.xyz that is not allowed in the used potential.\n");
+      }
     }
 
     for (int d = 0; d < 3; ++d) {
@@ -370,7 +387,11 @@ void read_xyz_in_line_3(
         PRINT_INPUT_ERROR("Atom mass should > 0.");
       }
     } else {
-      cpu_mass[n] = MASS_TABLE.at(cpu_atom_symbol[n]);
+      const auto mass_iter = MASS_TABLE.find(cpu_atom_symbol[n]);
+      if (mass_iter == MASS_TABLE.end()) {
+        PRINT_INPUT_ERROR("Cannot infer atomic mass from species symbol in model.xyz.");
+      }
+      cpu_mass[n] = mass_iter->second;
     }
 
     if (has_charge) {
@@ -396,6 +417,11 @@ void read_xyz_in_line_3(
         group[m].number = group[m].cpu_label[n] + 1;
       }
     }
+  }
+
+  if (infer_type_from_xyz) {
+    number_of_types = atom_symbols.size();
+    printf("Inferred %d atom type(s) from model.xyz species list.\n", number_of_types);
   }
 }
 
@@ -435,8 +461,14 @@ static std::string get_filename_potential()
   std::string filename_potential;
   while (std::getline(input_run, line)) {
     std::vector<std::string> tokens = get_tokens(line);
-    if (tokens.size() >= 2) {
-      if (tokens[0] == "potential") {
+    if (tokens.size() >= 2 && tokens[0] == "potential") {
+      if (tokens[1] == "mace") {
+        if (tokens.size() >= 3) {
+          filename_potential = tokens[2];
+        } else {
+          PRINT_INPUT_ERROR("Keyword 'potential mace' needs a model filename.");
+        }
+      } else {
         filename_potential = tokens[1];
       }
     }
@@ -459,15 +491,18 @@ static std::vector<std::string> get_atom_symbols(std::string& filename_potential
 
   std::vector<std::string> tokens = get_tokens(input_potential);
   if (tokens.size() < 3) {
-    std::cout << "The first line of the potential file should have at least 3 items." << std::endl;
-    exit(1);
+    std::cout << "Warning: cannot parse species list from potential file " << filename_potential
+              << ". Fall back to inferring species from model.xyz." << std::endl;
+    input_potential.close();
+    return std::vector<std::string>();
   }
 
   int number_of_types = get_int_from_token(tokens[1], __FILE__, __LINE__);
   if (tokens.size() != 2 + number_of_types) {
-    std::cout << "The first line of the potential file should have " << number_of_types
-              << " atom symbols." << std::endl;
-    exit(1);
+    std::cout << "Warning: inconsistent species list format in potential file " << filename_potential
+              << ". Fall back to inferring species from model.xyz." << std::endl;
+    input_potential.close();
+    return std::vector<std::string>();
   }
 
   std::vector<std::string> atom_symbols(number_of_types);

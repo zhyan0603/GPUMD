@@ -40,8 +40,11 @@ static std::string parse_mace_model_from_runin()
     if (tokens.size() >= 3 && tokens[0] == "potential" && tokens[1] == "mace") {
       return tokens[2];
     }
+    if (tokens.size() >= 2 && tokens[0] == "potential" && tokens[1] != "mace") {
+      return tokens[1];
+    }
   }
-  PRINT_INPUT_ERROR("Expect line: potential mace <model.mace> in run.in.");
+  PRINT_INPUT_ERROR("Expect line: potential <model.mace> or potential mace <model.mace> in run.in.");
   return "";
 }
 
