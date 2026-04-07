@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-One-time MACE PyTorch checkpoint -> native .mace converter.
+Offline MACE PyTorch checkpoint -> native .mace converter.
 
 Runtime dependency policy:
   - torch is required only in this offline converter.

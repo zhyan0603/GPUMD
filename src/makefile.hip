@@ -126,4 +126,4 @@ potentials/mace/%.o: potentials/mace/%.cu $(HEADERS)
 # clean up
 ###########################################################
 clean:
-	rm -f */*.o *.o gpumd nep gpumd_mace
+	rm -f */*.o */*/*.o *.o gpumd nep gpumd_mace

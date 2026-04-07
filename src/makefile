@@ -185,5 +185,5 @@ clean:
 ifdef OS
 	del /s *.obj *.exp *.lib *.exe
 else
-	rm -f */*.o *.o gpumd nep gnep gpumd_mace
+	rm -f */*.o */*/*.o *.o gpumd nep gnep gpumd_mace
 endif
