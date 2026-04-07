@@ -24,7 +24,7 @@ struct HyperParameters {
   uint32_t max_neighbors = 256;
   float r_max = 0.0f;
   float cutoff_p = 6.0f;
-  float cutoff_q = 6.0f;
+  float cutoff_q = 12.0f;
   float scale = 1.0f;
   float shift = 0.0f;
 };

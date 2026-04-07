@@ -93,9 +93,15 @@ def _as_state_dict(obj: Any) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any], i
             sd = obj.state_dict()
             flags |= 0x2
             if hasattr(obj, "r_max"):
-                meta["r_max"] = float(obj.r_max)
+                try:
+                    meta["r_max"] = float(obj.r_max)
+                except (TypeError, ValueError):
+                    pass
             if hasattr(obj, "max_ell"):
-                meta["l_max"] = int(obj.max_ell)
+                try:
+                    meta["l_max"] = int(obj.max_ell)
+                except (TypeError, ValueError):
+                    pass
             return sd, meta, flags
         except Exception:
             pass
@@ -279,22 +285,22 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
         ro = ro.reshape(-1)[:num_channels].contiguous()
 
     # readout bias (optional in some exported models)
-    ro_b = None
+    readout_bias = None
     for k, v in sd.items():
         kl = k.lower()
         if "readout" in kl and "bias" in kl and isinstance(v, torch.Tensor):
-            ro_b = v.detach().cpu().float().reshape(-1)
+            readout_bias = v.detach().cpu().float().reshape(-1)
             break
-    if ro_b is None or ro_b.numel() == 0:
-        ro_b = torch.zeros(1, dtype=torch.float32)
+    if readout_bias is None or readout_bias.numel() == 0:
+        readout_bias = torch.zeros(1, dtype=torch.float32)
     else:
-        ro_b = ro_b[:1].contiguous()
+        readout_bias = readout_bias[:1].contiguous()
 
     r_max = float(meta.get("r_max", meta.get("cutoff", 5.0)))
     l_max = int(meta.get("max_ell", meta.get("l_max", 0)))
     max_neighbors = int(meta.get("max_num_neighbors", 256))
     cutoff_p = float(meta.get("cutoff_p", 6.0))
-    cutoff_q = float(meta.get("cutoff_q", 6.0))
+    cutoff_q = float(meta.get("cutoff_q", 12.0))
     scale = float(meta.get("scale", 1.0))
     shift = float(meta.get("shift", 0.0))
 
@@ -313,7 +319,7 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
         "species_embedding": species_embedding.reshape(-1).numpy(),
         "radial_weights": radial_w.reshape(-1).numpy(),
         "readout_weight": ro.reshape(-1).numpy(),
-        "readout_bias": ro_b.reshape(-1).numpy(),
+        "readout_bias": readout_bias.reshape(-1).numpy(),
         "debug_keys": (emb_key, radial_key, ro_key),
     }
 
@@ -346,8 +352,8 @@ def main() -> None:
             print(f"[DEBUG] Failed to summarize checkpoint tensors: {exc2}", file=sys.stderr)
         sys.exit(1)
 
-    model_name = type(obj).__name__.lower()
-    if "scaleshift" in model_name:
+    class_name_lower = type(obj).__name__.lower()
+    if "scaleshift" in class_name_lower:
         flags |= 0x1
 
     header = struct.pack(

@@ -31,6 +31,9 @@ static __device__ __forceinline__ float smooth_cutoff(
     return 0.0f;
   }
   const float x = r / r_max;
+  if (fabsf(p - q) < 1.0e-6f) {
+    return 0.5f * (cosf(PI * x) + 1.0f);
+  }
   const float xp = powf(x, p);
   const float xq = powf(x, q);
   return (1.0f - xp) / (1.0f - xq + CUTOFF_EPSILON);
