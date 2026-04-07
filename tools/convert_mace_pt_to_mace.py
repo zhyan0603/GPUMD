@@ -331,10 +331,42 @@ def _write_tensor(f, arr) -> None:
         f.write(arr.tobytes(order="C"))
 
 
+def _write_txt_dump(path: Path, payload: Dict[str, Any], flags: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        f.write("# GPUMD native MACE text dump (debug/check only)\n")
+        f.write(f"magic {MACE_MAGIC}\n")
+        f.write(f"version {MACE_VERSION}\n")
+        f.write(f"flags {flags}\n")
+        f.write(f"num_species {payload['num_species']}\n")
+        f.write(f"num_channels {payload['num_channels']}\n")
+        f.write(f"num_radial {payload['num_radial']}\n")
+        f.write(f"num_interactions {payload['num_interactions']}\n")
+        f.write(f"l_max {payload['l_max']}\n")
+        f.write(f"max_neighbors {payload['max_neighbors']}\n")
+        f.write(f"r_max {payload['r_max']:.9g}\n")
+        f.write(f"cutoff_p {payload['cutoff_p']:.9g}\n")
+        f.write(f"cutoff_q {payload['cutoff_q']:.9g}\n")
+        f.write(f"scale {payload['scale']:.9g}\n")
+        f.write(f"shift {payload['shift']:.9g}\n")
+
+        for key in ("species_embedding", "radial_weights", "readout_weight", "readout_bias"):
+            arr = payload[key]
+            f.write(f"\n[{key}] size={int(arr.size)}\n")
+            if arr.size:
+                f.write(" ".join(f"{float(x):.9g}" for x in arr) + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Convert MACE .pt/.model to native .mace format")
     parser.add_argument("input_model", type=Path, help="Path to MACE checkpoint (.pt/.model)")
     parser.add_argument("output_mace", type=Path, help="Path to output .mace file")
+    parser.add_argument(
+        "--dump-txt",
+        type=Path,
+        default=None,
+        help="Optional path to write a readable text dump of extracted parameters.",
+    )
     args = parser.parse_args()
 
     try:
@@ -387,6 +419,9 @@ def main() -> None:
         _write_tensor(f, payload["readout_weight"])
         _write_tensor(f, payload["readout_bias"])
 
+    if args.dump_txt is not None:
+        _write_txt_dump(args.dump_txt, payload, flags)
+
     emb_key, radial_key, ro_key = payload["debug_keys"]
     print("Wrote", args.output_mace)
     print("  species:", payload["num_species"])
@@ -397,6 +432,8 @@ def main() -> None:
     print("   - embedding:", emb_key)
     print("   - radial:", radial_key)
     print("   - readout:", ro_key)
+    if args.dump_txt is not None:
+        print("  txt dump:", args.dump_txt)
 
 
 if __name__ == "__main__":

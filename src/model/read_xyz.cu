@@ -31,6 +31,7 @@ The class defining the simulation model.
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 const std::map<std::string, double> MASS_TABLE{
@@ -497,7 +498,20 @@ static std::vector<std::string> get_atom_symbols(std::string& filename_potential
     return std::vector<std::string>();
   }
 
-  int number_of_types = get_int_from_token(tokens[1], __FILE__, __LINE__);
+  int number_of_types = 0;
+  try {
+    size_t parsed_length = 0;
+    number_of_types = std::stoi(tokens[1], &parsed_length);
+    if (parsed_length != tokens[1].size() || number_of_types <= 0) {
+      throw std::invalid_argument("invalid atom type count token");
+    }
+  } catch (const std::exception&) {
+    std::cout << "Warning: cannot parse atom-type count from potential file " << filename_potential
+              << ". Fall back to inferring species from model.xyz." << std::endl;
+    input_potential.close();
+    return std::vector<std::string>();
+  }
+
   if (tokens.size() != 2 + number_of_types) {
     std::cout << "Warning: inconsistent species list format in potential file " << filename_potential
               << ". Fall back to inferring species from model.xyz." << std::endl;
