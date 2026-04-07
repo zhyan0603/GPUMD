@@ -164,8 +164,8 @@ static __global__ void gpu_message_passing(
       float g = 0.0f;
       float dg = 0.0f;
       // only first interaction block is used in this standalone invariant implementation
-      const int t = 0;
-      const int base = (t * num_channels + c) * num_radial;
+      const int interaction_index = 0;
+      const int base = (interaction_index * num_channels + c) * num_radial;
       for (int m = 0; m < num_radial; ++m) {
         float phi = 0.0f;
         float dphi = 0.0f;

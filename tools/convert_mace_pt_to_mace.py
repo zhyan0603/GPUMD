@@ -111,9 +111,9 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
             emb_candidates.append((k, v))
     if not emb_candidates:
         raise RuntimeError("Failed to find species embedding tensor.")
-    emb_key, emb = sorted(emb_candidates, key=lambda x: x[1].numel())[0]
-    emb = emb.detach().cpu().float().contiguous()
-    num_species, num_channels = emb.shape
+    emb_key, species_embedding = sorted(emb_candidates, key=lambda x: x[1].numel())[0]
+    species_embedding = species_embedding.detach().cpu().float().contiguous()
+    num_species, num_channels = species_embedding.shape
 
     # radial weights: choose first radial-like weight and reshape to [I,C,R]
     radial_key, radial_w = _find_first(sd, ("radial", "weight"), min_dim=2)
@@ -176,7 +176,7 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
         "cutoff_q": cutoff_q,
         "scale": scale,
         "shift": shift,
-        "species_embedding": emb.reshape(-1).numpy(),
+        "species_embedding": species_embedding.reshape(-1).numpy(),
         "radial_weights": radial_w.reshape(-1).numpy(),
         "readout_weight": ro.reshape(-1).numpy(),
         "readout_bias": ro_b.reshape(-1).numpy(),

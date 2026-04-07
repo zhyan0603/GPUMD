@@ -57,8 +57,8 @@ void load_model(const char* mace_file, Model& model)
 {
   std::ifstream in(mace_file, std::ios::binary);
   if (!in.is_open()) {
-    std::cout << "Failed to open " << mace_file << std::endl;
-    exit(1);
+    std::cout << "Failed to open .mace file: " << mace_file << std::endl;
+    PRINT_INPUT_ERROR("Check model path and read permissions for .mace input file.");
   }
 
   FileHeader h{};
