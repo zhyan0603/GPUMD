@@ -43,7 +43,7 @@ import argparse
 import struct
 import sys
 from pathlib import Path
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 import torch
 
@@ -136,7 +136,7 @@ def _find_first(
 
 def _find_by_token_sets(
     sd: Dict[str, torch.Tensor], token_sets: Iterable[Tuple[str, ...]], min_dim: int = 1
-) -> Tuple[str, torch.Tensor] | None:
+) -> Optional[Tuple[str, torch.Tensor]]:
     for token_set in token_sets:
         toks = tuple(t.lower() for t in token_set)
         for k, v in sd.items():
