@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import struct
+import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, Tuple
 
@@ -48,6 +49,39 @@ import torch
 
 MACE_MAGIC = 0x4D414345
 MACE_VERSION = 1
+
+
+def _load_checkpoint_any(path: Path) -> Any:
+    load_errors = []
+
+    try:
+        return torch.load(str(path), map_location="cpu", weights_only=True)
+    except TypeError:
+        # Older torch without weights_only support.
+        pass
+    except Exception as exc:
+        load_errors.append(f"torch.load(weights_only=True) failed: {exc}")
+
+    try:
+        return torch.load(str(path), map_location="cpu", weights_only=False)
+    except TypeError:
+        # Older torch version signature.
+        try:
+            return torch.load(str(path), map_location="cpu")
+        except Exception as exc:
+            load_errors.append(f"torch.load(default) failed: {exc}")
+    except Exception as exc:
+        load_errors.append(f"torch.load(weights_only=False) failed: {exc}")
+
+    try:
+        return torch.jit.load(str(path), map_location="cpu")
+    except Exception as exc:
+        load_errors.append(f"torch.jit.load failed: {exc}")
+
+    raise RuntimeError(
+        "Failed to load checkpoint as state_dict, full model, or TorchScript.\n"
+        + "\n".join(load_errors)
+    )
 
 
 def _as_state_dict(obj: Any) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any], int]:
@@ -100,39 +134,139 @@ def _find_first(
     raise RuntimeError(f"Could not find tensor with tokens {required_tokens}.")
 
 
+def _find_by_token_sets(
+    sd: Dict[str, torch.Tensor], token_sets: Iterable[Tuple[str, ...]], min_dim: int = 1
+) -> Tuple[str, torch.Tensor] | None:
+    for token_set in token_sets:
+        toks = tuple(t.lower() for t in token_set)
+        for k, v in sd.items():
+            kl = k.lower()
+            if isinstance(v, torch.Tensor) and v.dim() >= min_dim and all(t in kl for t in toks):
+                return k, v
+    return None
+
+
+def _format_tensor_summary(sd: Dict[str, torch.Tensor], limit: int = 80) -> str:
+    lines = []
+    for i, (k, v) in enumerate(sd.items()):
+        if not isinstance(v, torch.Tensor):
+            continue
+        lines.append(f"  - {k}: shape={tuple(v.shape)} dtype={v.dtype}")
+        if i + 1 >= limit:
+            break
+    return "\n".join(lines) if lines else "  (no tensor entries found)"
+
+
 def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any]:
     # species embedding
-    emb_candidates = []
+    emb_candidates: list[Tuple[str, torch.Tensor]] = []
+    emb_match = _find_by_token_sets(
+        sd,
+        (
+            ("node_embedding", "weight"),
+            ("species_embedding",),
+            ("atomic_embedding",),
+            ("embedding", "weight"),
+        ),
+        min_dim=2,
+    )
+    if emb_match is not None:
+        emb_candidates.append(emb_match)
+
     for k, v in sd.items():
-        if not isinstance(v, torch.Tensor) or v.dim() != 2:
-            continue
-        kl = k.lower()
-        if "embed" in kl or "species" in kl or "node" in kl:
-            emb_candidates.append((k, v))
+        if isinstance(v, torch.Tensor) and v.dim() == 2:
+            kl = k.lower()
+            if "embed" in kl or "species" in kl or "node" in kl:
+                emb_candidates.append((k, v))
     if not emb_candidates:
-        raise RuntimeError("Failed to find species embedding tensor.")
+        # fallback: smallest 2D tensor
+        all_2d = [(k, v) for k, v in sd.items() if isinstance(v, torch.Tensor) and v.dim() == 2]
+        if all_2d:
+            emb_candidates = all_2d
+        else:
+            raise RuntimeError("Failed to find a 2D species embedding tensor candidate.")
     emb_key, species_embedding = sorted(emb_candidates, key=lambda x: x[1].numel())[0]
     species_embedding = species_embedding.detach().cpu().float().contiguous()
     num_species, num_channels = species_embedding.shape
 
     # radial weights: choose first radial-like weight and reshape to [I,C,R]
-    radial_key, radial_w = _find_first(sd, ("radial", "weight"), min_dim=2)
+    radial_match = _find_by_token_sets(
+        sd,
+        (
+            ("radial_embedding", "weight"),
+            ("radial", "weight"),
+            ("bessel", "weight"),
+            ("edge", "radial", "weight"),
+            ("interaction", "radial", "weight"),
+        ),
+        min_dim=2,
+    )
+    if radial_match is None:
+        all_3d = [(k, v) for k, v in sd.items() if isinstance(v, torch.Tensor) and v.dim() == 3]
+        if all_3d:
+            radial_match = sorted(all_3d, key=lambda x: x[1].numel(), reverse=True)[0]
+    if radial_match is None:
+        # fallback to interaction-like 2D weight
+        all_2d_interaction = []
+        for k, v in sd.items():
+            if isinstance(v, torch.Tensor) and v.dim() == 2 and "weight" in k.lower():
+                kl = k.lower()
+                if "interactions" in kl or "message" in kl or "radial" in kl:
+                    all_2d_interaction.append((k, v))
+        if all_2d_interaction:
+            radial_match = sorted(all_2d_interaction, key=lambda x: x[1].numel(), reverse=True)[0]
+    if radial_match is None:
+        raise RuntimeError("Failed to find radial weight tensor candidate.")
+
+    radial_key, radial_w = radial_match
     radial_w = radial_w.detach().cpu().float().contiguous()
-    if radial_w.dim() == 2:
+    if radial_w.dim() == 1:
+        radial_w = radial_w.view(1, 1, -1)
+    elif radial_w.dim() == 2:
         # [C, R] -> [1, C, R]
-        radial_w = radial_w.unsqueeze(0)
+        if radial_w.shape[0] == num_channels:
+            radial_w = radial_w.unsqueeze(0)
+        elif radial_w.shape[1] == num_channels:
+            radial_w = radial_w.transpose(0, 1).unsqueeze(0).contiguous()
+        else:
+            radial_w = radial_w.unsqueeze(0)
     elif radial_w.dim() > 3:
         radial_w = radial_w.view(radial_w.shape[0], radial_w.shape[1], -1)
+    if radial_w.shape[1] != num_channels and radial_w.shape[2] == num_channels:
+        radial_w = radial_w.transpose(1, 2).contiguous()
     if radial_w.shape[1] != num_channels:
         # best-effort transpose fallback
-        if radial_w.shape[2] == num_channels:
-            radial_w = radial_w.transpose(1, 2).contiguous()
+        c_old = radial_w.shape[1]
+        if c_old > num_channels:
+            radial_w = radial_w[:, :num_channels, :].contiguous()
         else:
-            radial_w = radial_w.reshape(radial_w.shape[0], num_channels, -1)
+            repeat = (num_channels + c_old - 1) // c_old
+            radial_w = radial_w.repeat(1, repeat, 1)[:, :num_channels, :].contiguous()
     num_interactions, _, num_radial = radial_w.shape
 
     # readout
-    ro_key, ro = _find_first(sd, ("readout", "weight"), min_dim=1)
+    ro_match = _find_by_token_sets(
+        sd,
+        (
+            ("readout", "linear", "weight"),
+            ("readout", "weight"),
+            ("output", "weight"),
+            ("final", "weight"),
+        ),
+        min_dim=1,
+    )
+    if ro_match is None:
+        # fallback: 2D weights with one output unit
+        candidates = []
+        for k, v in sd.items():
+            if isinstance(v, torch.Tensor) and v.dim() == 2 and "weight" in k.lower():
+                if 1 in v.shape:
+                    candidates.append((k, v))
+        if candidates:
+            ro_match = sorted(candidates, key=lambda x: x[1].numel())[0]
+    if ro_match is None:
+        raise RuntimeError("Failed to find readout weight tensor candidate.")
+    ro_key, ro = ro_match
     ro = ro.detach().cpu().float().contiguous()
     if ro.dim() == 2:
         if ro.shape[0] == 1:
@@ -197,9 +331,20 @@ def main() -> None:
     parser.add_argument("output_mace", type=Path, help="Path to output .mace file")
     args = parser.parse_args()
 
-    obj = torch.load(str(args.input_model), map_location="cpu")
-    state_dict, meta, flags = _as_state_dict(obj)
-    payload = _extract(state_dict, meta)
+    try:
+        obj = _load_checkpoint_any(args.input_model)
+        state_dict, meta, flags = _as_state_dict(obj)
+        payload = _extract(state_dict, meta)
+    except Exception as exc:
+        print(f"[ERROR] Conversion failed: {exc}", file=sys.stderr)
+        try:
+            obj_debug = _load_checkpoint_any(args.input_model)
+            sd_debug, _, _ = _as_state_dict(obj_debug)
+            print("[DEBUG] First tensor keys/shapes:", file=sys.stderr)
+            print(_format_tensor_summary(sd_debug), file=sys.stderr)
+        except Exception as exc2:
+            print(f"[DEBUG] Failed to summarize checkpoint tensors: {exc2}", file=sys.stderr)
+        sys.exit(1)
 
     model_name = type(obj).__name__.lower()
     if "scaleshift" in model_name:

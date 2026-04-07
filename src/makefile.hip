@@ -34,6 +34,17 @@ SOURCES_GPUMD =                   \
 SOURCES_NEP =                     \
 	$(wildcard main_nep/*.cu)     \
 	$(wildcard utilities/*.cu)
+SOURCES_MACE_CU =                             \
+	$(wildcard potentials/mace/*.cu)           \
+	force/neighbor.cu                          \
+	model/atom.cu                              \
+	model/box.cu                               \
+	model/group.cu                             \
+	model/read_xyz.cu                          \
+	utilities/error.cu                         \
+	utilities/main_common.cu                   \
+	utilities/read_file.cu
+SOURCES_MACE_CPP = main_mace.cpp
 
 
 ###########################################################
@@ -41,6 +52,8 @@ SOURCES_NEP =                     \
 ###########################################################
 OBJ_GPUMD = $(SOURCES_GPUMD:.cu=.o)
 OBJ_NEP = $(SOURCES_NEP:.cu=.o)
+OBJ_MACE_CU = $(SOURCES_MACE_CU:.cu=.o)
+OBJ_MACE_CPP = $(SOURCES_MACE_CPP:.cpp=.o)
 
 
 ###########################################################
@@ -56,13 +69,14 @@ HEADERS =                         \
 	$(wildcard measure/*.cuh)     \
 	$(wildcard model/*.cuh)       \
 	$(wildcard phonon/*.cuh)      \
-	$(wildcard main_nep/*.cuh)
+	$(wildcard main_nep/*.cuh)    \
+	$(wildcard potentials/mace/*.cuh)
 
 
 ###########################################################
 # executables
 ###########################################################
-all: gpumd nep
+all: gpumd nep gpumd_mace
 gpumd: $(OBJ_GPUMD)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
 	@echo =================================================
@@ -72,6 +86,11 @@ nep: $(OBJ_NEP)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
 	@echo =================================================
 	@echo The nep executable is successfully compiled!
+	@echo =================================================
+gpumd_mace: $(OBJ_MACE_CPP) $(OBJ_MACE_CU)
+	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
+	@echo =================================================
+	@echo The gpumd_mace executable is successfully compiled!
 	@echo =================================================
 
 
@@ -98,11 +117,14 @@ phonon/%.o: phonon/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 main_nep/%.o: main_nep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
+potentials/mace/%.o: potentials/mace/%.cu $(HEADERS)
+	$(CC) $(CFLAGS) $(INC) -c $< -o $@
+%.o: %.cpp $(HEADERS)
+	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 
 
 ###########################################################
 # clean up
 ###########################################################
 clean:
-	rm -f */*.o gpumd nep
-
+	rm -f */*.o *.o gpumd nep gpumd_mace
