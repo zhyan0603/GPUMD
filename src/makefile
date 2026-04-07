@@ -46,6 +46,7 @@ SOURCES_GNEP =                     \
 	$(wildcard main_gnep/*.cu)     \
 	$(wildcard utilities/*.cu)
 SOURCES_MACE_CU =                             \
+	main_mace.cu                               \
 	$(wildcard potentials/mace/*.cu)           \
 	force/neighbor.cu                          \
 	model/atom.cu                              \
@@ -55,7 +56,6 @@ SOURCES_MACE_CU =                             \
 	utilities/error.cu                         \
 	utilities/main_common.cu                   \
 	utilities/read_file.cu
-SOURCES_MACE_CPP = main_mace.cpp
 
 
 ###########################################################
@@ -66,13 +66,11 @@ OBJ_GPUMD = $(SOURCES_GPUMD:.cu=.obj)
 OBJ_NEP = $(SOURCES_NEP:.cu=.obj)
 OBJ_GNEP = $(SOURCES_GNEP:.cu=.obj)
 OBJ_MACE_CU = $(SOURCES_MACE_CU:.cu=.obj)
-OBJ_MACE_CPP = $(SOURCES_MACE_CPP:.cpp=.obj)
 else
 OBJ_GPUMD = $(SOURCES_GPUMD:.cu=.o)
 OBJ_NEP = $(SOURCES_NEP:.cu=.o)
 OBJ_GNEP = $(SOURCES_GNEP:.cu=.o)
 OBJ_MACE_CU = $(SOURCES_MACE_CU:.cu=.o)
-OBJ_MACE_CPP = $(SOURCES_MACE_CPP:.cpp=.o)
 endif
 
 
@@ -113,7 +111,7 @@ gnep: $(OBJ_GNEP)
 	@echo =================================================
 	@echo The gnep executable is successfully compiled!
 	@echo =================================================
-gpumd_mace: $(OBJ_MACE_CPP) $(OBJ_MACE_CU)
+gpumd_mace: $(OBJ_MACE_CU)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
 	@echo =================================================
 	@echo The gpumd_mace executable is successfully compiled!
@@ -148,7 +146,7 @@ main_gnep/%.obj: main_gnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 potentials/mace/%.obj: potentials/mace/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-%.obj: %.cpp $(HEADERS)
+%.obj: %.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 else # for Linux
 integrate/%.o: integrate/%.cu $(HEADERS)
@@ -175,7 +173,7 @@ main_gnep/%.o: main_gnep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 potentials/mace/%.o: potentials/mace/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-%.o: %.cpp $(HEADERS)
+%.o: %.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 endif
 

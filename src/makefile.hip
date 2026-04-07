@@ -35,6 +35,7 @@ SOURCES_NEP =                     \
 	$(wildcard main_nep/*.cu)     \
 	$(wildcard utilities/*.cu)
 SOURCES_MACE_CU =                             \
+	main_mace.cu                               \
 	$(wildcard potentials/mace/*.cu)           \
 	force/neighbor.cu                          \
 	model/atom.cu                              \
@@ -44,7 +45,6 @@ SOURCES_MACE_CU =                             \
 	utilities/error.cu                         \
 	utilities/main_common.cu                   \
 	utilities/read_file.cu
-SOURCES_MACE_CPP = main_mace.cpp
 
 
 ###########################################################
@@ -53,7 +53,6 @@ SOURCES_MACE_CPP = main_mace.cpp
 OBJ_GPUMD = $(SOURCES_GPUMD:.cu=.o)
 OBJ_NEP = $(SOURCES_NEP:.cu=.o)
 OBJ_MACE_CU = $(SOURCES_MACE_CU:.cu=.o)
-OBJ_MACE_CPP = $(SOURCES_MACE_CPP:.cpp=.o)
 
 
 ###########################################################
@@ -87,7 +86,7 @@ nep: $(OBJ_NEP)
 	@echo =================================================
 	@echo The nep executable is successfully compiled!
 	@echo =================================================
-gpumd_mace: $(OBJ_MACE_CPP) $(OBJ_MACE_CU)
+gpumd_mace: $(OBJ_MACE_CU)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
 	@echo =================================================
 	@echo The gpumd_mace executable is successfully compiled!
@@ -119,7 +118,7 @@ main_nep/%.o: main_nep/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 potentials/mace/%.o: potentials/mace/%.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
-%.o: %.cpp $(HEADERS)
+%.o: %.cu $(HEADERS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 
 
