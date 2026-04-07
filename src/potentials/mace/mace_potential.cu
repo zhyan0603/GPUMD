@@ -18,6 +18,12 @@ namespace mace
 {
 namespace
 {
+constexpr float CUTOFF_EPSILON = 1.0e-12f;
+constexpr float MIN_DISTANCE = 1.0e-8f;
+constexpr float MIN_DISTANCE_SQ = 1.0e-16f;
+constexpr float Y00_CONSTANT = 0.28209479177387814f; // 1/(2*sqrt(pi))
+constexpr int BLOCK_SIZE = 128;
+
 static __device__ __forceinline__ float smooth_cutoff(
   const float r, const float r_max, const float p, const float q)
 {
@@ -27,7 +33,7 @@ static __device__ __forceinline__ float smooth_cutoff(
   const float x = r / r_max;
   const float xp = powf(x, p);
   const float xq = powf(x, q);
-  return (1.0f - xp) / (1.0f - xq + 1.0e-12f);
+  return (1.0f - xp) / (1.0f - xq + CUTOFF_EPSILON);
 }
 
 static __device__ __forceinline__ void radial_bessel(
@@ -37,7 +43,7 @@ static __device__ __forceinline__ void radial_bessel(
   const float kr = k * r;
   const float s = sinf(kr);
   const float c = cosf(kr);
-  const float rinv = 1.0f / fmaxf(r, 1.0e-8f);
+  const float rinv = 1.0f / fmaxf(r, MIN_DISTANCE);
   const float rinv2 = rinv * rinv;
   phi = s * rinv;
   dphi = k * c * rinv - s * rinv2;
@@ -72,7 +78,7 @@ static __global__ void gpu_spherical_harmonics(const int n, float* y00)
 {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
-    y00[idx] = 0.28209479177387814f;
+    y00[idx] = Y00_CONSTANT;
   }
 }
 
@@ -147,7 +153,7 @@ static __global__ void gpu_message_passing(
     float dz = (float)(z[j] - z[i]);
     apply_mic(box, dx, dy, dz);
     const float r2 = dx * dx + dy * dy + dz * dz;
-    if (r2 >= r_max * r_max || r2 < 1.0e-16f) {
+    if (r2 >= r_max * r_max || r2 < MIN_DISTANCE_SQ) {
       continue;
     }
     const float r = sqrtf(r2);
@@ -257,7 +263,7 @@ void compute_inference(
 {
   const int N = (int)type.size();
   const int MN = (int)(ws.NL_local.size() / N);
-  const int block_size = 128;
+  const int block_size = BLOCK_SIZE;
   const int grid_size = (N - 1) / block_size + 1;
 
   if ((int)potential.size() != N) {
@@ -270,9 +276,9 @@ void compute_inference(
     virial.resize(9 * N);
   }
 
-  gpu_zero<<<(N - 1) / 128 + 1, 128>>>(N, potential.data());
-  gpu_zero<<<(3 * N - 1) / 128 + 1, 128>>>(3 * N, force.data());
-  gpu_zero<<<(9 * N - 1) / 128 + 1, 128>>>(9 * N, virial.data());
+  gpu_zero<<<(N - 1) / BLOCK_SIZE + 1, BLOCK_SIZE>>>(N, potential.data());
+  gpu_zero<<<(3 * N - 1) / BLOCK_SIZE + 1, BLOCK_SIZE>>>(3 * N, force.data());
+  gpu_zero<<<(9 * N - 1) / BLOCK_SIZE + 1, BLOCK_SIZE>>>(9 * N, virial.data());
   GPU_CHECK_KERNEL
 
   // Minimal launch of invariant helper kernels to keep full forward-pass stages explicit.
