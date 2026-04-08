@@ -29,7 +29,8 @@ neighbor list.
 namespace
 {
 // ON1 checks offsets in [-2, 2] for each periodic direction, so at least 5 bins
-// are required to avoid wrapped-offset aliasing to the same cell index.
+// are required to avoid wrapped-offset aliasing to the same cell index
+// (e.g., with 4 bins, offsets -2 and +2 wrap to the same cell).
 constexpr int MIN_BINS_FOR_ALIAS_FREE = 5;
 }
 
@@ -116,6 +117,7 @@ static __global__ void gpu_find_neighbor_ON1(
 {
   const int n1 = blockIdx.x * blockDim.x + threadIdx.x + N1;
   int count = 0;
+  bool overflowed = false;
   if (n1 < N2) {
     const double x1 = x[n1];
     const double y1 = y[n1];
@@ -178,7 +180,7 @@ static __global__ void gpu_find_neighbor_ON1(
                     NL[count * N + n1] = n2;
                     ++count;
                   } else {
-                    atomicOr(&overflow_flag[0], 1);
+                    overflowed = true;
                   }
                 }
               }
@@ -188,6 +190,9 @@ static __global__ void gpu_find_neighbor_ON1(
       }
     }
     NN[n1] = count;
+    if (overflowed) {
+      atomicOr(&overflow_flag[0], 1);
+    }
   }
 }
 
@@ -341,6 +346,9 @@ void find_neighbor(
   const int MN = N > 0 ? (int)(NL.size() / N) : 0;
   if (N <= 0 || MN <= 0) {
     return;
+  }
+  if (N1 < 0 || N2 < N1 || N2 > N) {
+    PRINT_INPUT_ERROR("Invalid neighbor index range (N1, N2).");
   }
   const int block_size = 256;
   const int grid_size = (N2 - N1 - 1) / block_size + 1;
