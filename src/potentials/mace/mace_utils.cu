@@ -9,6 +9,8 @@ namespace mace
 {
 namespace
 {
+// Practical floor for standalone MACE to reduce early overflow in dense systems
+// when exported metadata does not provide a sufficiently large max-neighbor cap.
 constexpr int MACE_MIN_NEIGHBOR_CAPACITY = 1024;
 }
 

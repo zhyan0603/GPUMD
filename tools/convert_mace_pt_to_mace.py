@@ -302,7 +302,7 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
 
     r_max = float(meta.get("r_max", meta.get("cutoff", 5.0)))
     l_max = int(meta.get("max_ell", meta.get("l_max", 0)))
-    max_neighbors = int(meta.get("max_num_neighbors", 256))
+    max_neighbors = int(meta.get("max_num_neighbors", 1024))
     cutoff_p = float(meta.get("cutoff_p", 6.0))
     cutoff_q = float(meta.get("cutoff_q", 12.0))
     scale = float(meta.get("scale", 1.0))
