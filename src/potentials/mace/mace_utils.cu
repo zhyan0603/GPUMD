@@ -19,6 +19,7 @@ void initialize_neighbor(const HyperParameters& hp, const int num_atoms, Neighbo
   int effective_max_neighbors = (int)hp.max_neighbors;
   // Standalone MACE commonly needs a larger neighbor cap than generic defaults.
   // Keep model-provided value, but enforce a practical lower bound to avoid early overflow.
+  // This mainly covers converters/checkpoints that do not store a robust max-neighbor metadata value.
   effective_max_neighbors = std::max(effective_max_neighbors, MACE_MIN_NEIGHBOR_CAPACITY);
   if (num_atoms > 1) {
     effective_max_neighbors = std::min(effective_max_neighbors, num_atoms - 1);
