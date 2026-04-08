@@ -85,6 +85,7 @@ static __global__ void find_cell_contents(
 static __global__ void gpu_find_neighbor_ON1(
   const Box box,
   const int N,
+  const int MN,
   const int N1,
   const int N2,
   const int* __restrict__ type,
@@ -100,7 +101,8 @@ static __global__ void gpu_find_neighbor_ON1(
   const int ny,
   const int nz,
   const double rc_inv,
-  const float cutoff_square)
+  const float cutoff_square,
+  int* overflow_flag)
 {
   const int n1 = blockIdx.x * blockDim.x + threadIdx.x + N1;
   int count = 0;
@@ -150,7 +152,12 @@ static __global__ void gpu_find_neighbor_ON1(
               const float d2 = x12 * x12 + y12 * y12 + z12 * z12;
 
               if (d2 < cutoff_square) {
-                NL[count++ * N + n1] = n2;
+                if (count < MN) {
+                  NL[count * N + n1] = n2;
+                  ++count;
+                } else {
+                  overflow_flag[0] = 1;
+                }
               }
             }
           }
@@ -308,6 +315,10 @@ void find_neighbor(
   GPU_Vector<int>& NL)
 {
   const int N = NN.size();
+  const int MN = N > 0 ? (int)(NL.size() / N) : 0;
+  if (N <= 0 || MN <= 0) {
+    return;
+  }
   const int block_size = 256;
   const int grid_size = (N2 - N1 - 1) / block_size + 1;
   const double* x = position_per_atom.data();
@@ -319,12 +330,15 @@ void find_neighbor(
   int num_bins[3];
   box.get_num_bins(rc_cell_list, num_bins);
 
+  GPU_Vector<int> overflow_flag(1, 0);
+
   find_cell_list(
     rc_cell_list, num_bins, box, position_per_atom, cell_count, cell_count_sum, cell_contents);
 
   gpu_find_neighbor_ON1<<<grid_size, block_size>>>(
     box,
     N,
+    MN,
     N1,
     N2,
     type.data(),
@@ -340,10 +354,17 @@ void find_neighbor(
     num_bins[1],
     num_bins[2],
     rc_inv_cell_list,
-    rc * rc);
+    rc * rc,
+    overflow_flag.data());
   GPU_CHECK_KERNEL
 
-  const int MN = NL.size() / NN.size();
+  int overflow_host = 0;
+  overflow_flag.copy_to_host(&overflow_host);
+  if (overflow_host != 0) {
+    PRINT_INPUT_ERROR(
+      "Neighbor list overflow: increase max neighbors or use a smaller cutoff (r_max).");
+  }
+
   gpu_sort_neighbor_list<<<N, MN, MN * sizeof(int)>>>(N, NN.data(), NL.data());
   GPU_CHECK_KERNEL
 }
