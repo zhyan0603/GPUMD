@@ -107,7 +107,7 @@ static __global__ void gpu_find_neighbor_ON1(
   const int nz,
   const double rc_inv,
   const float cutoff_square,
-  const int deduplicate_by_index,
+  const int enable_deduplication,
   int* overflow_flag)
 {
   const int n1 = blockIdx.x * blockDim.x + threadIdx.x + N1;
@@ -159,7 +159,7 @@ static __global__ void gpu_find_neighbor_ON1(
 
               if (d2 < cutoff_square) {
                 bool already_added = false;
-                if (deduplicate_by_index) {
+                if (enable_deduplication) {
                   // Alias-induced duplicates only happen in tiny-bin periodic setups;
                   // linear scan keeps the fix local and simple in that regime.
                   for (int t = 0; t < count; ++t) {
@@ -348,7 +348,7 @@ void find_neighbor(
 
   int num_bins[3];
   box.get_num_bins(rc_cell_list, num_bins);
-  const int deduplicate_by_index =
+  const int enable_deduplication =
     ((box.pbc_x && num_bins[0] < MIN_BINS_FOR_ALIAS_FREE) ||
      (box.pbc_y && num_bins[1] < MIN_BINS_FOR_ALIAS_FREE) ||
      (box.pbc_z && num_bins[2] < MIN_BINS_FOR_ALIAS_FREE))
@@ -380,7 +380,7 @@ void find_neighbor(
     num_bins[2],
     rc_inv_cell_list,
     rc * rc,
-    deduplicate_by_index,
+    enable_deduplication,
     overflow_flag.data());
   GPU_CHECK_KERNEL
 
