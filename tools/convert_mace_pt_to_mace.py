@@ -302,8 +302,8 @@ def _extract(sd: Dict[str, torch.Tensor], meta: Dict[str, Any]) -> Dict[str, Any
 
     r_max = float(meta.get("r_max", meta.get("cutoff", 5.0)))
     l_max = int(meta.get("max_ell", meta.get("l_max", 0)))
-    # Keep converter default aligned with gpumd_mace runtime floor to reduce overflow
-    # for dense systems when source metadata does not provide max_num_neighbors.
+    # Keep converter default aligned with gpumd_mace runtime floor for general robustness
+    # when source metadata does not provide max_num_neighbors.
     max_neighbors = int(meta.get("max_num_neighbors", 1024))
     cutoff_p = float(meta.get("cutoff_p", 6.0))
     cutoff_q = float(meta.get("cutoff_q", 12.0))
