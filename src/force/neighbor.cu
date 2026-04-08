@@ -156,7 +156,7 @@ static __global__ void gpu_find_neighbor_ON1(
                   NL[count * N + n1] = n2;
                   ++count;
                 } else {
-                  overflow_flag[0] = 1;
+                  atomicExch(&overflow_flag[0], 1);
                 }
               }
             }
