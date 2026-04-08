@@ -102,6 +102,7 @@ static __global__ void gpu_find_neighbor_ON1(
   const int nz,
   const double rc_inv,
   const float cutoff_square,
+  const int deduplicate_by_index,
   int* overflow_flag)
 {
   const int n1 = blockIdx.x * blockDim.x + threadIdx.x + N1;
@@ -152,11 +153,22 @@ static __global__ void gpu_find_neighbor_ON1(
               const float d2 = x12 * x12 + y12 * y12 + z12 * z12;
 
               if (d2 < cutoff_square) {
-                if (count < MN) {
-                  NL[count * N + n1] = n2;
-                  ++count;
-                } else {
-                  atomicOr(&overflow_flag[0], 1);
+                bool already_added = false;
+                if (deduplicate_by_index) {
+                  for (int t = 0; t < count; ++t) {
+                    if (NL[t * N + n1] == n2) {
+                      already_added = true;
+                      break;
+                    }
+                  }
+                }
+                if (!already_added) {
+                  if (count < MN) {
+                    NL[count * N + n1] = n2;
+                    ++count;
+                  } else {
+                    atomicOr(&overflow_flag[0], 1);
+                  }
                 }
               }
             }
@@ -329,6 +341,10 @@ void find_neighbor(
 
   int num_bins[3];
   box.get_num_bins(rc_cell_list, num_bins);
+  const int deduplicate_by_index =
+    ((box.pbc_x && num_bins[0] < 3) || (box.pbc_y && num_bins[1] < 3) || (box.pbc_z && num_bins[2] < 3))
+      ? 1
+      : 0;
 
   GPU_Vector<int> overflow_flag(1, 0);
 
@@ -355,6 +371,7 @@ void find_neighbor(
     num_bins[2],
     rc_inv_cell_list,
     rc * rc,
+    deduplicate_by_index,
     overflow_flag.data());
   GPU_CHECK_KERNEL
 
