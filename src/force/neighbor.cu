@@ -22,11 +22,15 @@ neighbor list.
 #include "utilities/gpu_macro.cuh"
 #include <thrust/execution_policy.h>
 #include <thrust/scan.h>
+#include <algorithm>
 #include <cstring>
+#include <vector>
 
 namespace
 {
-constexpr int MIN_BINS_FOR_ALIAS_FREE = 3;
+// ON1 checks offsets in [-2, 2] for each periodic direction, so at least 5 bins
+// are required to avoid wrapped-offset aliasing to the same cell index.
+constexpr int MIN_BINS_FOR_ALIAS_FREE = 5;
 }
 
 static __device__ void find_cell_id(
@@ -387,6 +391,36 @@ void find_neighbor(
   int overflow_host = 0;
   overflow_flag.copy_to_host(&overflow_host);
   if (overflow_host != 0) {
+    std::vector<int> h_NN(N, 0);
+    NN.copy_to_host(h_NN.data(), N);
+    int max_nn = 0;
+    int num_atoms_at_capacity = 0;
+    const int begin = std::max(0, N1);
+    const int end = std::min(N, N2);
+    for (int n = begin; n < end; ++n) {
+      max_nn = std::max(max_nn, h_NN[n]);
+      if (h_NN[n] >= MN) {
+        ++num_atoms_at_capacity;
+      }
+    }
+    fprintf(stderr, "Neighbor overflow diagnostics:\n");
+    fprintf(stderr, "    N=%d N1=%d N2=%d MN=%d rc=%g\n", N, N1, N2, MN, rc);
+    fprintf(
+      stderr,
+      "    pbc=(%d,%d,%d) bins=(%d,%d,%d) dedup=%d alias_free_min_bins=%d\n",
+      box.pbc_x,
+      box.pbc_y,
+      box.pbc_z,
+      num_bins[0],
+      num_bins[1],
+      num_bins[2],
+      enable_deduplication,
+      MIN_BINS_FOR_ALIAS_FREE);
+    fprintf(
+      stderr,
+      "    max_nn_in_range=%d atoms_at_or_over_capacity=%d\n",
+      max_nn,
+      num_atoms_at_capacity);
     PRINT_INPUT_ERROR(
       "Neighbor list overflow: increase max neighbors or use a smaller cutoff (r_max).");
   }
