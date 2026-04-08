@@ -24,6 +24,11 @@ neighbor list.
 #include <thrust/scan.h>
 #include <cstring>
 
+namespace
+{
+constexpr int MIN_BINS_FOR_ALIAS_FREE = 3;
+}
+
 static __device__ void find_cell_id(
   const Box& box,
   const double x,
@@ -155,6 +160,8 @@ static __global__ void gpu_find_neighbor_ON1(
               if (d2 < cutoff_square) {
                 bool already_added = false;
                 if (deduplicate_by_index) {
+                  // Alias-induced duplicates only happen in tiny-bin periodic setups;
+                  // linear scan keeps the fix local and simple in that regime.
                   for (int t = 0; t < count; ++t) {
                     if (NL[t * N + n1] == n2) {
                       already_added = true;
@@ -342,7 +349,9 @@ void find_neighbor(
   int num_bins[3];
   box.get_num_bins(rc_cell_list, num_bins);
   const int deduplicate_by_index =
-    ((box.pbc_x && num_bins[0] < 3) || (box.pbc_y && num_bins[1] < 3) || (box.pbc_z && num_bins[2] < 3))
+    ((box.pbc_x && num_bins[0] < MIN_BINS_FOR_ALIAS_FREE) ||
+     (box.pbc_y && num_bins[1] < MIN_BINS_FOR_ALIAS_FREE) ||
+     (box.pbc_z && num_bins[2] < MIN_BINS_FOR_ALIAS_FREE))
       ? 1
       : 0;
 
