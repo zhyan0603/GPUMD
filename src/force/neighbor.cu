@@ -22,7 +22,17 @@ neighbor list.
 #include "utilities/gpu_macro.cuh"
 #include <thrust/execution_policy.h>
 #include <thrust/scan.h>
+#include <algorithm>
 #include <cstring>
+#include <vector>
+
+namespace
+{
+// ON1 checks offsets in [-2, 2] for each periodic direction, so at least 5 bins
+// are required to avoid wrapped-offset aliasing to the same cell index
+// (e.g., with 4 bins, offsets -2 and +2 wrap to the same cell).
+constexpr int MIN_BINS_FOR_ALIAS_FREE = 5;
+}
 
 static __device__ void find_cell_id(
   const Box& box,
@@ -85,6 +95,7 @@ static __global__ void find_cell_contents(
 static __global__ void gpu_find_neighbor_ON1(
   const Box box,
   const int N,
+  const int MN,
   const int N1,
   const int N2,
   const int* __restrict__ type,
@@ -100,10 +111,13 @@ static __global__ void gpu_find_neighbor_ON1(
   const int ny,
   const int nz,
   const double rc_inv,
-  const float cutoff_square)
+  const float cutoff_square,
+  const int enable_deduplication,
+  int* overflow_flag)
 {
   const int n1 = blockIdx.x * blockDim.x + threadIdx.x + N1;
   int count = 0;
+  bool overflowed = false;
   if (n1 < N2) {
     const double x1 = x[n1];
     const double y1 = y[n1];
@@ -150,7 +164,25 @@ static __global__ void gpu_find_neighbor_ON1(
               const float d2 = x12 * x12 + y12 * y12 + z12 * z12;
 
               if (d2 < cutoff_square) {
-                NL[count++ * N + n1] = n2;
+                bool already_added = false;
+                if (enable_deduplication) {
+                  // Alias-induced duplicates only happen in tiny-bin periodic setups;
+                  // linear scan keeps the fix local and simple in that regime.
+                  for (int t = 0; t < count; ++t) {
+                    if (NL[t * N + n1] == n2) {
+                      already_added = true;
+                      break;
+                    }
+                  }
+                }
+                if (!already_added) {
+                  if (count < MN) {
+                    NL[count * N + n1] = n2;
+                    ++count;
+                  } else {
+                    overflowed = true;
+                  }
+                }
               }
             }
           }
@@ -158,6 +190,9 @@ static __global__ void gpu_find_neighbor_ON1(
       }
     }
     NN[n1] = count;
+    if (overflowed) {
+      atomicOr(&overflow_flag[0], 1);
+    }
   }
 }
 
@@ -308,6 +343,13 @@ void find_neighbor(
   GPU_Vector<int>& NL)
 {
   const int N = NN.size();
+  const int MN = N > 0 ? (int)(NL.size() / N) : 0;
+  if (N <= 0 || MN <= 0) {
+    return;
+  }
+  if (N1 < 0 || N2 < N1 || N2 > N) {
+    PRINT_INPUT_ERROR("Invalid neighbor index range (N1, N2).");
+  }
   const int block_size = 256;
   const int grid_size = (N2 - N1 - 1) / block_size + 1;
   const double* x = position_per_atom.data();
@@ -318,6 +360,14 @@ void find_neighbor(
 
   int num_bins[3];
   box.get_num_bins(rc_cell_list, num_bins);
+  const int enable_deduplication =
+    ((box.pbc_x && num_bins[0] < MIN_BINS_FOR_ALIAS_FREE) ||
+     (box.pbc_y && num_bins[1] < MIN_BINS_FOR_ALIAS_FREE) ||
+     (box.pbc_z && num_bins[2] < MIN_BINS_FOR_ALIAS_FREE))
+      ? 1
+      : 0;
+
+  GPU_Vector<int> overflow_flag(1, 0);
 
   find_cell_list(
     rc_cell_list, num_bins, box, position_per_atom, cell_count, cell_count_sum, cell_contents);
@@ -325,6 +375,7 @@ void find_neighbor(
   gpu_find_neighbor_ON1<<<grid_size, block_size>>>(
     box,
     N,
+    MN,
     N1,
     N2,
     type.data(),
@@ -340,10 +391,48 @@ void find_neighbor(
     num_bins[1],
     num_bins[2],
     rc_inv_cell_list,
-    rc * rc);
+    rc * rc,
+    enable_deduplication,
+    overflow_flag.data());
   GPU_CHECK_KERNEL
 
-  const int MN = NL.size() / NN.size();
+  int overflow_host = 0;
+  overflow_flag.copy_to_host(&overflow_host);
+  if (overflow_host != 0) {
+    std::vector<int> h_NN(N, 0);
+    NN.copy_to_host(h_NN.data(), N);
+    int max_nn = 0;
+    int num_atoms_at_capacity = 0;
+    const int begin = std::max(0, N1);
+    const int end = std::min(N, N2);
+    for (int n = begin; n < end; ++n) {
+      max_nn = std::max(max_nn, h_NN[n]);
+      if (h_NN[n] >= MN) {
+        ++num_atoms_at_capacity;
+      }
+    }
+    fprintf(stderr, "Neighbor overflow diagnostics:\n");
+    fprintf(stderr, "    N=%d N1=%d N2=%d MN=%d rc=%g\n", N, N1, N2, MN, rc);
+    fprintf(
+      stderr,
+      "    pbc=(%d,%d,%d) bins=(%d,%d,%d) dedup=%d alias_free_min_bins=%d\n",
+      box.pbc_x,
+      box.pbc_y,
+      box.pbc_z,
+      num_bins[0],
+      num_bins[1],
+      num_bins[2],
+      enable_deduplication,
+      MIN_BINS_FOR_ALIAS_FREE);
+    fprintf(
+      stderr,
+      "    max_nn_in_range=%d atoms_at_or_over_capacity=%d\n",
+      max_nn,
+      num_atoms_at_capacity);
+    PRINT_INPUT_ERROR(
+      "Neighbor list overflow: increase max neighbors or use a smaller cutoff (r_max).");
+  }
+
   gpu_sort_neighbor_list<<<N, MN, MN * sizeof(int)>>>(N, NN.data(), NL.data());
   GPU_CHECK_KERNEL
 }

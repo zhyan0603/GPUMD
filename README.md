@@ -22,11 +22,18 @@ This software is distributed under the GNU General Public License (GPL) version 
 ## Compile GPUMD
 * Go to the `src` directory and type `make`.
 * When the compilation finishes, two executables, `gpumd` and `nep`, will be generated in the `src` directory. 
+* To build the standalone MACE executable, run `make gpumd_mace` in `src`.
 
 ## Run GPUMD
 * Go to the directory of an example in the [examples directory](examples) and type one of the following commands:
   * `path/to/gpumd`
   * `path/to/nep`
+  * `path/to/gpumd_mace` (standalone single-point inference with `run.in` + `model.xyz`)
+
+### Notes for `gpumd_mace`
+* `gpumd_mace` currently performs standalone MACE inference (energy/force/virial/stress) from `model.xyz`.
+* It does **not** currently run the full GPUMD MD workflow or all `run.in` simulation keywords.
+* `run.in` accepts either `potential model.mace` or `potential mace model.mace`.
 
 ## Tutorials
 * We provide a [Colab Tutorial](https://colab.research.google.com/drive/1QnXAveZgzwut4Mvldsw-r2I0EWIsj1KA?usp=sharing) to show the workflow of the construction of a NEP model and its application in large-scale atomistic simulations for PbTe system. This will run entirely on Google's cloud virtual machine.
