@@ -30,6 +30,11 @@ Dump thermo data to a file at a given interval.
 #include <cstring>
 #include <string>
 
+namespace
+{
+constexpr size_t MAX_ELEMENT_SYMBOL_LENGTH = 16;
+}
+
 Dump_Thermo::Dump_Thermo(const char** param, int num_param) 
 {
   parse(param, num_param);
@@ -55,7 +60,7 @@ void Dump_Thermo::parse(const char** param, int num_param)
     if (element_symbol_.empty()) {
       PRINT_INPUT_ERROR("element symbol for dump_thermo should not be empty.");
     }
-    if (element_symbol_.size() > 16) {
+    if (element_symbol_.size() > MAX_ELEMENT_SYMBOL_LENGTH) {
       PRINT_INPUT_ERROR("element symbol for dump_thermo is too long.");
     }
     for (char c : element_symbol_) {
