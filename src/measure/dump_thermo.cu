@@ -55,6 +55,9 @@ void Dump_Thermo::parse(const char** param, int num_param)
     if (element_symbol_.empty()) {
       PRINT_INPUT_ERROR("element symbol for dump_thermo should not be empty.");
     }
+    if (element_symbol_.size() > 16) {
+      PRINT_INPUT_ERROR("element symbol for dump_thermo is too long.");
+    }
     for (char c : element_symbol_) {
       if (!std::isalpha(static_cast<unsigned char>(c))) {
         PRINT_INPUT_ERROR("element symbol for dump_thermo should contain only letters.");
