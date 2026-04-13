@@ -14,9 +14,13 @@ Output files
      - Brief description
      - Output mode
    * - :ref:`thermo.out <thermo_out>`
-     - :ref:`dump_thermo <kw_dump_thermo>`
-     - Global thermodynamic quantities
-     - Append
+      - :ref:`dump_thermo <kw_dump_thermo>`
+      - Global thermodynamic quantities
+      - Append
+   * - :ref:`thermo_<element_symbol>.out <thermo_element_out>`
+      - :ref:`dump_thermo <kw_dump_thermo>` (with element symbol)
+      - Summed potential energy for one selected element
+      - Append
    * - :ref:`movie.xyz <movie_xyz>`
      - :ref:`dump_position <kw_dump_position>`
      - Trajectory (atomic positions, velocities etc)
@@ -183,6 +187,7 @@ Output files
    msd_out
    shc_out
    thermo_out
+   thermo_element_out
    velocity_out
    viscosity_out
    onsager_out

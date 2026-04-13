@@ -25,7 +25,9 @@ Dump thermo data to a file at a given interval.
 #include "utilities/gpu_macro.cuh"
 #include "utilities/gpu_vector.cuh"
 #include "utilities/read_file.cuh"
+#include <cstdio>
 #include <cstring>
+#include <string>
 
 Dump_Thermo::Dump_Thermo(const char** param, int num_param) 
 {
@@ -35,8 +37,8 @@ Dump_Thermo::Dump_Thermo(const char** param, int num_param)
 
 void Dump_Thermo::parse(const char** param, int num_param)
 {
-  if (num_param != 2) {
-    PRINT_INPUT_ERROR("dump_thermo should have 1 parameter.");
+  if (num_param != 2 && num_param != 3) {
+    PRINT_INPUT_ERROR("dump_thermo should have 1 or 2 parameters.");
   }
   if (!is_valid_int(param[1], &dump_interval_)) {
     PRINT_INPUT_ERROR("thermo dump interval should be an integer.");
@@ -45,6 +47,15 @@ void Dump_Thermo::parse(const char** param, int num_param)
     PRINT_INPUT_ERROR("thermo dump interval should > 0.");
   }
   printf("Dump thermo every %d steps.\n", dump_interval_);
+
+  if (num_param == 3) {
+    dump_element_potential_ = true;
+    element_symbol_ = param[2];
+    if (element_symbol_.empty()) {
+      PRINT_INPUT_ERROR("element symbol for dump_thermo should not be empty.");
+    }
+    printf("Also dump summed potential energy for element %s.\n", element_symbol_.c_str());
+  }
 }
 
 void Dump_Thermo::preprocess(
@@ -57,6 +68,20 @@ void Dump_Thermo::preprocess(
   Force& force)
 {
   fid_ = my_fopen("thermo.out", "a");
+  if (dump_element_potential_) {
+    element_atom_indices_.clear();
+    for (int n = 0; n < atom.number_of_atoms; ++n) {
+      if (atom.cpu_atom_symbol[n] == element_symbol_) {
+        element_atom_indices_.push_back(n);
+      }
+    }
+    if (element_atom_indices_.empty()) {
+      PRINT_INPUT_ERROR("No atoms found for the requested element symbol in dump_thermo.");
+    }
+    cpu_potential_per_atom_.resize(atom.number_of_atoms);
+    std::snprintf(filename_, sizeof(filename_), "thermo_%s.out", element_symbol_.c_str());
+    fid_element_ = my_fopen(filename_, "a");
+  }
 }
 
 void Dump_Thermo::process(
@@ -118,6 +143,21 @@ void Dump_Thermo::process(
     box.cpu_h[5],
     box.cpu_h[8]);
   fflush(fid_);
+
+  if (dump_element_potential_) {
+    atom.potential_per_atom.copy_to_host(cpu_potential_per_atom_.data());
+    double selected_element_potential = 0.0;
+    for (const int atom_index : element_atom_indices_) {
+      selected_element_potential += cpu_potential_per_atom_[atom_index];
+    }
+    fprintf(
+      fid_element_,
+      "%20d%20.10e%20.10e\n",
+      step + 1,
+      global_time * TIME_UNIT_CONVERSION,
+      selected_element_potential);
+    fflush(fid_element_);
+  }
 }
 
 void Dump_Thermo::postprocess(
@@ -129,4 +169,8 @@ void Dump_Thermo::postprocess(
   const double temperature)
 {
   fclose(fid_);
+  if (fid_element_ != nullptr) {
+    fclose(fid_element_);
+    fid_element_ = nullptr;
+  }
 }

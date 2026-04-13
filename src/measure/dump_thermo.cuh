@@ -16,6 +16,8 @@
 #pragma once
 #include "property.cuh"
 #include "utilities/gpu_vector.cuh"
+#include <string>
+#include <vector>
 class Box;
 
 class Dump_Thermo : public Property
@@ -60,4 +62,9 @@ private:
   int dump_interval_ = 1;
   FILE* fid_;
   char filename_[200];
+  bool dump_element_potential_ = false;
+  FILE* fid_element_ = nullptr;
+  std::string element_symbol_;
+  std::vector<int> element_atom_indices_;
+  std::vector<double> cpu_potential_per_atom_;
 };
