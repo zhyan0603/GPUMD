@@ -63,6 +63,9 @@ void Dump_Thermo::parse(const char** param, int num_param)
     if (element_symbol_.size() > MAX_ELEMENT_SYMBOL_LENGTH) {
       PRINT_INPUT_ERROR("element symbol for dump_thermo is too long.");
     }
+    if (element_symbol_.find_first_of("/\\") != std::string::npos) {
+      PRINT_INPUT_ERROR("element symbol for dump_thermo should not contain path separators.");
+    }
     for (char c : element_symbol_) {
       if (!std::isalpha(static_cast<unsigned char>(c))) {
         PRINT_INPUT_ERROR("element symbol for dump_thermo should contain only letters.");
