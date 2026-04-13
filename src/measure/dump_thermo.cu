@@ -52,6 +52,9 @@ void Dump_Thermo::parse(const char** param, int num_param)
   if (num_param == 3) {
     dump_element_potential_ = true;
     element_symbol_ = param[2];
+    if (element_symbol_.empty()) {
+      PRINT_INPUT_ERROR("element symbol for dump_thermo should not be empty.");
+    }
     for (char c : element_symbol_) {
       if (!std::isalpha(static_cast<unsigned char>(c))) {
         PRINT_INPUT_ERROR("element symbol for dump_thermo should contain only letters.");
