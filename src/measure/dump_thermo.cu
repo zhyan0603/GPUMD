@@ -25,6 +25,7 @@ Dump thermo data to a file at a given interval.
 #include "utilities/gpu_macro.cuh"
 #include "utilities/gpu_vector.cuh"
 #include "utilities/read_file.cuh"
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -51,8 +52,10 @@ void Dump_Thermo::parse(const char** param, int num_param)
   if (num_param == 3) {
     dump_element_potential_ = true;
     element_symbol_ = param[2];
-    if (element_symbol_.empty()) {
-      PRINT_INPUT_ERROR("element symbol for dump_thermo should not be empty.");
+    for (unsigned char c : element_symbol_) {
+      if (!std::isalpha(c)) {
+        PRINT_INPUT_ERROR("element symbol for dump_thermo should contain only letters.");
+      }
     }
     printf("Also dump summed potential energy for element %s.\n", element_symbol_.c_str());
   }
