@@ -18,8 +18,12 @@ Output files
       - Global thermodynamic quantities
       - Append
    * - :ref:`thermo_<element_symbol>.out <thermo_element_out>`
-      - :ref:`dump_thermo <kw_dump_thermo>` (with element symbol)
-      - Summed potential energy for one selected element
+       - :ref:`dump_thermo <kw_dump_thermo>` (with element symbol)
+       - Summed potential energy for one selected element
+       - Append
+   * - :ref:`temp.out <temp_out>`
+      - :ref:`dump_temp <kw_dump_temp>`
+      - Global temperature and subgroup temperatures
       - Append
    * - :ref:`movie.xyz <movie_xyz>`
      - :ref:`dump_position <kw_dump_position>`
@@ -186,6 +190,7 @@ Output files
    sdc_out
    msd_out
    shc_out
+   temp_out
    thermo_out
    thermo_element_out
    velocity_out

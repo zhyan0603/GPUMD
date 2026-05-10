@@ -87,6 +87,7 @@ Below you can find a listing of keywords for the ``run.in`` input file.
    dump_netcdf
    dump_position
    dump_restart
+   dump_temp
    dump_thermo
    dump_velocity
    dump_shock_nemd

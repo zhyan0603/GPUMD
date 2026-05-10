@@ -192,10 +192,14 @@ Output
      - No
      - No
    * - :ref:`dump_thermo <kw_dump_thermo>`
-     - Write thermodynamic quantities
-     - No
-     - No
+      - Write thermodynamic quantities
+      - No
+      - No
+   * - :ref:`dump_temp <kw_dump_temp>`
+      - Write global and subgroup temperatures
+      - No
+      - No
    * - :ref:`dump_velocity <kw_dump_velocity>`
-     - Write the atomic velocities
-     - No
-     - No
+      - Write the atomic velocities
+      - No
+      - No
