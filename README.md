@@ -1,14 +1,25 @@
-<div align="left">
-<img src="./logo/logo-main-arctic.png" alt="GPUMD logo" width="25%" />
-</div>
+<p align="center">
+  <img src="./logo/logo-main-arctic.png" alt="GPUMD logo" width="25%" />
+</p>
 
-# GPUMD
+<p align="center">
+  <a href="https://github.com/brucefan1983/GPUMD/releases"><img src="https://img.shields.io/github/v/release/brucefan1983/GPUMD?label=Version&style=flat-square&color=brightgreen" alt="Latest GPUMD release"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-LGPL--3.0--or--later-blue?style=flat-square" alt="License: LGPL-3.0-or-later"></a>
+  <a href="https://doi.org/10.1002/mgea.70028"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.crossref.org%2Fv1%2Fworks%2F10.1002%2Fmgea.70028&query=%24%5B%27message%27%5D%5B%27is-referenced-by-count%27%5D&label=Citations&style=flat-square&color=blue&cacheSeconds=86400" alt="Citations"></a>
+  <a href="https://github.com/brucefan1983/GPUMD/stargazers"><img src="https://img.shields.io/github/stars/brucefan1983/GPUMD?style=flat-square&color=yellow&label=Stars" alt="GitHub stars"></a>
+  <a href="https://github.com/brucefan1983/GPUMD/graphs/contributors"><img src="https://img.shields.io/github/contributors/brucefan1983/GPUMD?style=flat-square&color=brightgreen&label=Contributors" alt="GitHub contributors"></a>
+</p>
 
-**Graphics Processing Units Molecular Dynamics**
+<p align="center">
+  <a href="https://gpumd.org/">User manual</a> ·
+  <a href="https://gpumd.org/dev/">Development manual</a> ·
+  <a href="https://github.com/brucefan1983/GPUMD/blob/master/examples/README.md">Examples</a> ·
+  <a href="https://github.com/brucefan1983/GPUMD-Tutorials">Tutorials</a> ·
+  <a href="https://github.com/brucefan1983/GPUMD/blob/master/tools/readme.md">Tools</a> ·
+  <a href="#citations">Citations</a>
+</p>
 
-GPUMD is a high-performance, general-purpose molecular dynamics package implemented on GPUs. It supports empirical interatomic potentials and neuroevolution potentials (NEPs), and provides tools for training NEP models and using them in atomistic simulations.
-
-[User manual](https://gpumd.org/) · [Development manual](https://gpumd.org/dev/) · [Examples](https://github.com/brucefan1983/GPUMD/blob/master/examples/README.md) · [Tutorials](https://github.com/brucefan1983/GPUMD-Tutorials) · [Tools](https://github.com/brucefan1983/GPUMD/blob/master/tools/readme.md) · [Citations](#citations)
+*Graphics Processing Units Molecular Dynamics* (GPUMD) is a high-performance, general-purpose molecular dynamics package implemented on GPUs. It supports empirical interatomic potentials and neuroevolution potentials (NEPs), and provides tools for training NEP models and using them in atomistic simulations.
 
 ## Programs
 
